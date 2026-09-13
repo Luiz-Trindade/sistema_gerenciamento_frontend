@@ -103,8 +103,8 @@
         </q-card>
 
         <!-- Diálogo de Cadastro / Registro de Pagamento -->
-        <q-dialog v-model="dialog" persistent>
-            <q-card style="min-width: 450px; max-width: 600px;">
+        <q-dialog v-model="dialog" persistent maximized>
+            <q-card class="q-pa-md">
                 <q-card-section class="row items-center q-pb-none">
                     <div class="text-h6">
                         {{ isPaymentMode ? 'Registrar Pagamento' : (isEditing ? 'Editar' : 'Nova') }} Conta

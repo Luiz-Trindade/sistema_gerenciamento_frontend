@@ -75,8 +75,8 @@
         </q-card>
 
         <!-- Diálogo de Cadastro/Edição -->
-        <q-dialog v-model="dialog" persistent>
-            <q-card style="min-width: 400px; max-width: 600px;">
+        <q-dialog v-model="dialog" persistent maximized>
+            <q-card class="q-pa-md">
                 <q-card-section class="row items-center q-pb-none">
                     <div class="text-h6">{{ isEditing ? 'Editar' : 'Novo' }} Pedido</div>
                     <q-space />
