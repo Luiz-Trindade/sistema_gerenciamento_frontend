@@ -35,9 +35,7 @@
                     <q-card class="no-shadow chart-card">
                         <q-card-section>
                             <div class="text-subtitle1 text-weight-bold q-mb-sm">Evolução de Vendas (6 meses)</div>
-                            <div class="chart-container">
-                                <Line :data="lineData" :options="lineOptions" />
-                            </div>
+                            <LineChart :data="lineData" :options="lineOptions" />
                         </q-card-section>
                     </q-card>
                 </div>
@@ -45,9 +43,7 @@
                     <q-card class="no-shadow chart-card">
                         <q-card-section>
                             <div class="text-subtitle1 text-weight-bold q-mb-sm">Meios de Pagamento</div>
-                            <div class="chart-container">
-                                <Doughnut :data="doughnutData" :options="doughnutOptions" />
-                            </div>
+                            <DoughnutChart :data="doughnutData" :options="doughnutOptions" />
                         </q-card-section>
                     </q-card>
                 </div>
@@ -59,13 +55,11 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useQuasar } from 'quasar'
-import { Line, Doughnut } from 'vue-chartjs'
-import { Chart as ChartJS, Title, Tooltip, Legend, ArcElement, LineElement, CategoryScale, LinearScale, PointElement, Filler } from 'chart.js'
+import LineChart from '@/components/LineChart.vue'
+import DoughnutChart from '@/components/DoughnutChart.vue'
 
 const $q = useQuasar()
-ChartJS.register(Title, Tooltip, Legend, ArcElement, LineElement, CategoryScale, LinearScale, PointElement, Filler)
 
-// Objeto único para gerenciar cores do tema nos gráficos (elimina repetição)
 const theme = computed(() => ({
     text: $q.dark.isActive ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)',
     grid: $q.dark.isActive ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
@@ -127,10 +121,5 @@ const mockRefresh = () => $q.notify({ message: 'Dados atualizados!', color: 'pos
 .body--dark .kpi-card,
 .body--dark .chart-card {
     border-color: rgba(255, 255, 255, 0.08);
-}
-
-.chart-container {
-    height: 280px;
-    position: relative;
 }
 </style>

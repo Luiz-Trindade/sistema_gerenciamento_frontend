@@ -1,18 +1,62 @@
 <template>
-    <q-layout view="hHh lpR fFf">
+    <!-- 'L' maiúsculo: Drawer fixo que empurra o conteúdo. 'l' minúsculo faria ele flutuar/rolar -->
+    <q-layout view="hHh LpR fFf">
+
         <!-- Header Superior -->
-        <q-header elevated class="bg-primary text-white">
+        <q-header bordered class="bg-primary text-white">
             <q-toolbar>
+                <!-- Botão de Menu: Visível APENAS no Desktop (gt-sm = > 1023px) -->
+                <q-btn flat dense round icon="menu" aria-label="Alternar menu lateral" @click="toggleDrawer"
+                    class="gt-sm q-mr-sm" />
+
                 <q-toolbar-title class="text-weight-bold text-h6">
                     Sistema de Gerenciamento
                 </q-toolbar-title>
 
-                <!-- Melhoria: Link direto para as configurações -->
                 <q-btn flat round icon="account_circle" aria-label="Perfil" to="/config" />
             </q-toolbar>
         </q-header>
 
-        <!-- Container das Páginas -->
+        <!-- Drawer Lateral: Fixo, com scroll interno independente se o menu for longo -->
+        <q-drawer v-model="leftDrawerOpen" bordered :width="225"
+            style="height: 100vh; overflow-y: auto;">
+            <q-list padding class="q-pa-sm">
+                <q-item-label header class="text-primary text-weight-bold q-mb-md">
+                    Navegação
+                </q-item-label>
+
+                <q-item clickable v-ripple to="/" exact active-class="text-primary bg-primary/10 rounded-borders">
+                    <q-item-section avatar><q-icon name="space_dashboard" /></q-item-section>
+                    <q-item-section>Dashboard</q-item-section>
+                </q-item>
+
+                <q-item clickable v-ripple to="/estoque" exact
+                    active-class="text-primary bg-primary/10 rounded-borders">
+                    <q-item-section avatar><q-icon name="inventory_2" /></q-item-section>
+                    <q-item-section>Estoque</q-item-section>
+                </q-item>
+
+                <q-item clickable v-ripple to="/vendas" exact active-class="text-primary bg-primary/10 rounded-borders">
+                    <q-item-section avatar><q-icon name="point_of_sale" /></q-item-section>
+                    <q-item-section>Vendas</q-item-section>
+                </q-item>
+
+                <q-item clickable v-ripple to="/clientes" exact
+                    active-class="text-primary bg-primary/10 rounded-borders">
+                    <q-item-section avatar><q-icon name="people" /></q-item-section>
+                    <q-item-section>Clientes</q-item-section>
+                </q-item>
+
+                <q-separator class="q-my-md" />
+
+                <q-item clickable v-ripple to="/config" exact active-class="text-primary bg-primary/10 rounded-borders">
+                    <q-item-section avatar><q-icon name="settings" /></q-item-section>
+                    <q-item-section>Configurações</q-item-section>
+                </q-item>
+            </q-list>
+        </q-drawer>
+
+        <!-- Container das Páginas (Este é o único que deve rolar) -->
         <q-page-container>
             <router-view v-slot="{ Component }">
                 <transition name="fade" mode="out-in">
@@ -21,9 +65,8 @@
             </router-view>
         </q-page-container>
 
-        <!-- Navegação Inferior (Estilo Mobile Compacto) -->
-        <!-- CORREÇÃO: Fundo adaptativo ao modo escuro -->
-        <q-footer elevated :class="$q.dark.isActive ? 'bg-dark text-grey-4' : 'bg-white text-grey-8'">
+        <!-- Navegação Inferior: Visível APENAS no Mobile/Tablet (lt-md = < 1024px) -->
+        <q-footer bordered class="lt-md" :class="$q.dark.isActive ? 'bg-dark text-grey-4' : 'bg-white text-grey-8'">
             <q-tabs dense active-color="primary" indicator-color="transparent" align="justify"
                 class="text-caption q-py-xs">
                 <q-route-tab name="dash" icon="space_dashboard" label="Dash" to="/" exact />
@@ -33,15 +76,33 @@
                 <q-route-tab name="configuracoes" icon="settings" label="Config" to="/config" exact />
             </q-tabs>
         </q-footer>
+
     </q-layout>
 </template>
 
 <script setup>
-// O q-route-tab gerencia automaticamente baseado na rota atual
+import { ref, watch } from 'vue'
+import { useQuasar } from 'quasar'
+
+const $q = useQuasar()
+
+// Inicializa aberto no desktop
+const leftDrawerOpen = ref($q.screen.gt.sm)
+
+// Watcher para comportamento responsivo inteligente
+watch(
+    () => $q.screen.gt.sm,
+    (isDesktop) => {
+        leftDrawerOpen.value = isDesktop
+    }
+)
+
+const toggleDrawer = () => {
+    leftDrawerOpen.value = !leftDrawerOpen.value
+}
 </script>
 
 <style scoped>
-/* Transição suave estilo app nativo ao trocar de aba */
 .fade-enter-active,
 .fade-leave-active {
     transition: opacity 0.15s ease;
@@ -52,7 +113,6 @@
     opacity: 0;
 }
 
-/* Destaque visual adicional para tabs ativas */
 :deep(.q-tab--active) {
     color: var(--q-primary) !important;
     font-weight: 600;
