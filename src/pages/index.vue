@@ -3,11 +3,11 @@
 
         <!-- Header Superior: Oculto na rota de login -->
         <q-header v-if="route.path !== '/login'" bordered class="bg-primary text-white">
-            <q-toolbar>
+            <q-toolbar class="q-pl-sm q-pr-md">
                 <q-btn flat dense round icon="menu" aria-label="Alternar menu lateral" @click="toggleDrawer"
                     class="gt-sm q-mr-sm" />
 
-                <q-toolbar-title class="text-weight-bold text-h6">
+                <q-toolbar-title>
                     Sistema de Gerenciamento
                 </q-toolbar-title>
 
@@ -17,8 +17,7 @@
 
         <!-- Drawer Lateral: Oculto na rota de login -->
         <q-drawer v-if="route.path !== '/login'" v-model="leftDrawerOpen" bordered :width="240"
-            :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-grey-1 text-grey-9'"
-            style="height: 100vh; overflow-y: auto;">
+            class="bg-dark text-white" style="height: 100vh; overflow-y: auto;">
             <q-list padding class="q-pa-sm">
                 <q-item-label header class="text-primary text-weight-bold q-mb-md">
                     Navegação
@@ -73,7 +72,7 @@
                     <q-item-section>Clientes</q-item-section>
                 </q-item>
 
-                <q-separator class="q-my-md" :color="$q.dark.isActive ? 'grey-8' : 'grey-3'" />
+                <q-separator class="q-my-md" color="grey-8" />
 
                 <!-- Configurações -->
                 <q-item clickable v-ripple to="/config" exact active-class="text-primary bg-primary/10 rounded-borders">
@@ -84,7 +83,7 @@
         </q-drawer>
 
         <!-- Container das Páginas com Transição Inteligente -->
-        <q-page-container class="page-container-wrapper">
+        <q-page-container :class="['page-container-wrapper', $q.dark.isActive ? 'bg-dark-9' : 'bg-grey-3']">
             <router-view v-slot="{ Component }">
                 <transition :name="transitionName" mode="default">
                     <component :is="Component" :key="route.path" />

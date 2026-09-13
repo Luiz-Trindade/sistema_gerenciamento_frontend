@@ -1,5 +1,5 @@
 <template>
-    <q-page class="q-pa-md">
+    <q-page class="q-ma-md">
 
         <!-- Breadcrumbs (Navegação estrutural) -->
         <q-breadcrumbs active-color="primary" separator-color="grey-4" class="q-mb-md">

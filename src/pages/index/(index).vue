@@ -1,6 +1,6 @@
 <template>
-    <q-page>
-        <div class="q-pa-sm q-md-pa-md">
+    <q-page class="q-ma-md">
+        <div>
             <!-- Cabeçalho -->
             <div class="row items-center q-mb-md">
                 <div class="text-h6 text-sm-h5 text-weight-bold">Visão Geral</div>
