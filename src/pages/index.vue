@@ -1,11 +1,9 @@
 <template>
-    <!-- 'L' maiúsculo: Drawer fixo que empurra o conteúdo. 'l' minúsculo faria ele flutuar/rolar -->
     <q-layout view="hHh LpR fFf">
 
         <!-- Header Superior -->
         <q-header bordered class="bg-primary text-white">
             <q-toolbar>
-                <!-- Botão de Menu: Visível APENAS no Desktop (gt-sm = > 1023px) -->
                 <q-btn flat dense round icon="menu" aria-label="Alternar menu lateral" @click="toggleDrawer"
                     class="gt-sm q-mr-sm" />
 
@@ -17,9 +15,8 @@
             </q-toolbar>
         </q-header>
 
-        <!-- Drawer Lateral: Fixo, com scroll interno independente se o menu for longo -->
-        <q-drawer v-model="leftDrawerOpen" bordered :width="225"
-            style="height: 100vh; overflow-y: auto;">
+        <!-- Drawer Lateral: Fixo, com scroll interno independente -->
+        <q-drawer v-model="leftDrawerOpen" bordered :width="225" style="height: 100vh; overflow-y: auto;">
             <q-list padding class="q-pa-sm">
                 <q-item-label header class="text-primary text-weight-bold q-mb-md">
                     Navegação
@@ -56,16 +53,16 @@
             </q-list>
         </q-drawer>
 
-        <!-- Container das Páginas (Este é o único que deve rolar) -->
-        <q-page-container>
+        <!-- Container das Páginas com Transição Inteligente -->
+        <q-page-container class="page-container-wrapper">
             <router-view v-slot="{ Component }">
-                <transition name="fade" mode="out-in">
+                <transition :name="transitionName" mode="default">
                     <component :is="Component" />
                 </transition>
             </router-view>
         </q-page-container>
 
-        <!-- Navegação Inferior: Visível APENAS no Mobile/Tablet (lt-md = < 1024px) -->
+        <!-- Navegação Inferior: Visível APENAS no Mobile/Tablet -->
         <q-footer bordered class="lt-md" :class="$q.dark.isActive ? 'bg-dark text-grey-4' : 'bg-white text-grey-8'">
             <q-tabs dense active-color="primary" indicator-color="transparent" align="justify"
                 class="text-caption q-py-xs">
@@ -82,14 +79,15 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 
 const $q = useQuasar()
+const route = useRoute()
 
-// Inicializa aberto no desktop
+// Estado do Drawer
 const leftDrawerOpen = ref($q.screen.gt.sm)
 
-// Watcher para comportamento responsivo inteligente
 watch(
     () => $q.screen.gt.sm,
     (isDesktop) => {
@@ -100,17 +98,45 @@ watch(
 const toggleDrawer = () => {
     leftDrawerOpen.value = !leftDrawerOpen.value
 }
+
+// --- LÓGICA DE TRANSIÇÃO INTELIGENTE ---
+
+const routeOrder = ['/', '/estoque', '/vendas', '/clientes', '/config']
+
+const transitionName = ref('q-transition--fade')
+
+watch(
+    () => route.path,
+    (toPath, fromPath) => {
+        const toIndex = routeOrder.indexOf(toPath)
+        const fromIndex = routeOrder.indexOf(fromPath)
+        const isDesktop = $q.screen.gt.sm
+
+        if (toIndex !== -1 && fromIndex !== -1) {
+            if (isDesktop) {
+                // Desktop: slide vertical
+                transitionName.value = toIndex > fromIndex
+                    ? 'q-transition--slide-up'
+                    : 'q-transition--slide-down'
+            } else {
+                // Mobile: slide horizontal
+                transitionName.value = toIndex > fromIndex
+                    ? 'q-transition--slide-left'
+                    : 'q-transition--slide-right'
+            }
+        } else {
+            transitionName.value = 'q-transition--fade'
+        }
+    }
+)
 </script>
 
 <style scoped>
-.fade-enter-active,
-.fade-leave-active {
-    transition: opacity 0.15s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-    opacity: 0;
+/* Evita o surgimento de barra de rolagem no slide e fixa o contêiner */
+.page-container-wrapper {
+    overflow-x: hidden;
+    overflow-y: hidden;
+    position: relative;
 }
 
 :deep(.q-tab--active) {
