@@ -1,6 +1,13 @@
 <template>
     <q-page>
         <div class="q-pa-md">
+
+            <!-- Breadcrumbs (Navegação estrutural) -->
+            <q-breadcrumbs active-color="primary" separator-color="grey-4" class="q-mb-md">
+                <q-breadcrumbs-el label="Início" icon="home" to="/" />
+                <q-breadcrumbs-el label="Estoque" icon="inventory_2" />
+            </q-breadcrumbs>
+
             <!-- Cabeçalho -->
             <div class="row items-center q-mb-lg">
                 <q-icon name="inventory_2" color="primary" size="32px" class="q-mr-sm" />

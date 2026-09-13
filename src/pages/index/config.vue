@@ -1,11 +1,18 @@
 <template>
     <q-page class="q-pa-md">
+
+        <!-- Breadcrumbs (Navegação estrutural) -->
+        <q-breadcrumbs active-color="primary" separator-color="grey-4" class="q-mb-md">
+            <q-breadcrumbs-el label="Início" icon="home" to="/" />
+            <q-breadcrumbs-el label="Configurações" icon="settings" />
+        </q-breadcrumbs>
+
         <div class="text-h6 text-weight-bold q-mb-md">
             <q-icon name="settings" class="q-mr-sm" color="primary" size="28px" />
             Configurações
         </div>
 
-        <q-card class="no-shadow rounded-borders q-mb-md">
+        <q-card class="no-shadow rounded-borders q-mb-md" bordered>
             <q-list separator>
                 <q-item tag="label" v-ripple>
                     <q-item-section avatar>
@@ -13,7 +20,6 @@
                     </q-item-section>
                     <q-item-section>
                         <q-item-label class="text-weight-medium">Tema Escuro</q-item-label>
-                        <!-- Removido text-grey-7, o 'caption' nativo já se adapta perfeitamente -->
                         <q-item-label class="text-caption text-grey-7">Alternar entre modo claro e escuro</q-item-label>
                     </q-item-section>
                     <q-item-section side>
@@ -37,7 +43,7 @@
             </q-list>
         </q-card>
 
-        <q-card class="no-shadow rounded-borders">
+        <q-card class="no-shadow rounded-borders" bordered>
             <q-card-section class="text-center q-pa-md">
                 <div class="text-caption text-grey-7 q-mb-sm">
                     Sistema de Gerenciamento v1.0.0

@@ -16,7 +16,8 @@
         </q-header>
 
         <!-- Drawer Lateral: Fixo, com scroll interno independente -->
-        <q-drawer v-model="leftDrawerOpen" bordered :width="225" style="height: 100vh; overflow-y: auto;">
+        <q-drawer v-model="leftDrawerOpen" bordered :width="225" style="height: 100vh; overflow-y: auto;"
+            class="bg-dark text-white">
             <q-list padding class="q-pa-sm">
                 <q-item-label header class="text-primary text-weight-bold q-mb-md">
                     Navegação
@@ -44,7 +45,7 @@
                     <q-item-section>Clientes</q-item-section>
                 </q-item>
 
-                <q-separator class="q-my-md" />
+                <q-separator class="q-my-md bg-grey-8" />
 
                 <q-item clickable v-ripple to="/config" exact active-class="text-primary bg-primary/10 rounded-borders">
                     <q-item-section avatar><q-icon name="settings" /></q-item-section>

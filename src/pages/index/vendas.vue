@@ -1,6 +1,13 @@
 <template>
     <q-page>
         <div class="q-pa-md">
+
+            <!-- Breadcrumbs (Navegação estrutural) -->
+            <q-breadcrumbs active-color="primary" separator-color="grey-4" class="q-mb-md">
+                <q-breadcrumbs-el label="Início" icon="home" to="/" />
+                <q-breadcrumbs-el label="Vendas" icon="point_of_sale" />
+            </q-breadcrumbs>
+
             <!-- Cabeçalho -->
             <div class="row items-center q-mb-lg">
                 <q-icon name="point_of_sale" color="primary" size="32px" class="q-mr-sm" />
@@ -78,7 +85,6 @@ const navigateTo = (modulo) => {
 .nav-card {
     transition: all 0.2s ease;
     border-radius: 12px;
-    /* Borda sutil que funciona bem, mas o Quasar já gerencia o fundo do card */
     border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
