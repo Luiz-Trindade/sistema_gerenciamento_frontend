@@ -34,7 +34,7 @@
                         </template>
                     </q-input>
 
-                    <q-btn type="submit" color="primary" class="full-width q-mt-sm" size="lg" unelevated
+                    <q-btn icon="login" type="submit" color="primary" class="full-width q-mt-sm" size="lg" unelevated
                         :loading="loading" label="Entrar" />
                 </q-form>
             </q-card-section>
@@ -45,11 +45,12 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
-// import api from 'src/boot/axios'
+import { api } from '@/boot/axios'
 
 const router = useRouter()
+const route = useRoute()
 const $q = useQuasar()
 
 const email = ref('')
@@ -60,28 +61,40 @@ const loading = ref(false)
 const fazerLogin = async () => {
     loading.value = true
     try {
-        // MOCK: Substitua pela chamada real à sua API Django
-        // const response = await api.post('/api/auth/login/', {
-        //   email: email.value,
-        //   password: senha.value
-        // })
-
-        await new Promise(resolve => setTimeout(resolve, 1000)) // Simula delay de rede
-        const tokenMock = 'mock-jwt-token-xyz123'
-
-        localStorage.setItem('token', tokenMock)
-
-        $q.notify({
-            message: 'Login realizado com sucesso!',
-            color: 'positive',
-            icon: 'check',
-            position: 'top'
+        // Chamada à API na rota /api/token
+        const response = await api.post('/token/', {
+            email: email.value,
+            password: senha.value
         })
 
-        router.push('/')
-    } catch {
+        // Captura o token (suporta o formato SimpleJWT 'data.access' ou genérico 'data.token')
+        const token = response.data.access || response.data.token
+
+        if (token) {
+            localStorage.setItem('token', token)
+
+            // Salva o Refresh Token se a API retornar
+            if (response.data.refresh) {
+                localStorage.setItem('refreshToken', response.data.refresh)
+            }
+
+            $q.notify({
+                message: 'Login realizado com sucesso!',
+                color: 'positive',
+                icon: 'check',
+                position: 'top'
+            })
+
+            // Redireciona para a página que o usuário tentava acessar ou para a home '/'
+            const redirectPath = route.query.redirect || '/'
+            router.push(redirectPath)
+        }
+    } catch (error) {
+        // Exibe mensagem vinda da API (ex: Django "No active account found") ou genérica
+        const errorMsg = error.response?.data?.detail || 'E-mail ou senha inválidos. Tente novamente.'
+
         $q.notify({
-            message: 'E-mail ou senha inválidos. Tente novamente.',
+            message: errorMsg,
             color: 'negative',
             icon: 'error',
             position: 'top'

@@ -85,14 +85,25 @@ onMounted(() => {
 const confirmarSaida = () => {
     $q.dialog({
         title: 'Sair do Sistema',
-        message: 'Deseja realmente encerrar sua sessão?',
+        message: 'Deseja realmente encerrar a sua sessão?',
         persistent: true,
         ok: { label: 'Sair', color: 'negative' },
         cancel: { label: 'Cancelar', color: 'grey-7' }
     }).onOk(() => {
+        // 1. Elimina os tokens armazenados
         localStorage.removeItem('token')
+        localStorage.removeItem('refreshToken')
+
+        // 2. Redireciona o utilizador para a página de login
         router.push('/login')
-        $q.notify({ message: 'Sessão encerrada', color: 'info', icon: 'check' })
+
+        // 3. Notificação visual
+        $q.notify({
+            message: 'Sessão encerrada com sucesso',
+            color: 'info',
+            icon: 'check',
+            position: 'top'
+        })
     })
 }
 </script>
