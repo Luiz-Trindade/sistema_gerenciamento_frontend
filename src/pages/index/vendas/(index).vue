@@ -19,8 +19,31 @@
 
             <!-- Grid de Cards de Navegação -->
             <div class="row q-col-gutter-md">
+                <!-- Card: Ponto de Venda (PDV) -->
+                <div class="col-12 col-sm-6 col-md-4">
+                    <q-card class="nav-card cursor-pointer" :class="{ 'nav-card--active': activeCard === 'pdv' }"
+                        @click="navigateTo('pdv')" @mousedown="activeCard = 'pdv'" @mouseup="activeCard = null"
+                        @mouseleave="activeCard = null">
+                        <q-card-section class="text-center q-pa-lg">
+                            <q-icon name="storefront" color="purple-7" size="64px" class="q-mb-md" />
+                            <div class="text-h6 text-weight-bold q-mb-xs">
+                                Ponto de Venda (PDV)
+                            </div>
+                            <div class="text-caption text-grey-7">
+                                Emissão de vendas rápidas e frente de caixa
+                            </div>
+                        </q-card-section>
+                        <q-card-section class="q-pt-none">
+                            <div class="row items-center justify-center text-purple-7">
+                                <span class="text-caption text-weight-medium">Acessar</span>
+                                <q-icon name="arrow_forward_ios" size="12px" class="q-ml-xs" />
+                            </div>
+                        </q-card-section>
+                    </q-card>
+                </div>
+
                 <!-- Card: Pedidos de Venda -->
-                <div class="col-12 col-sm-6">
+                <div class="col-12 col-sm-6 col-md-4">
                     <q-card class="nav-card cursor-pointer" :class="{ 'nav-card--active': activeCard === 'pedidos' }"
                         @click="navigateTo('pedidos')" @mousedown="activeCard = 'pedidos'" @mouseup="activeCard = null"
                         @mouseleave="activeCard = null">
@@ -43,7 +66,7 @@
                 </div>
 
                 <!-- Card: Contas a Receber -->
-                <div class="col-12 col-sm-6">
+                <div class="col-12 col-sm-6 col-md-4">
                     <q-card class="nav-card cursor-pointer" :class="{ 'nav-card--active': activeCard === 'contas' }"
                         @click="navigateTo('contas')" @mousedown="activeCard = 'contas'" @mouseup="activeCard = null"
                         @mouseleave="activeCard = null">
@@ -64,6 +87,7 @@
                         </q-card-section>
                     </q-card>
                 </div>
+
             </div>
         </div>
     </q-page>

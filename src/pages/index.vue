@@ -83,6 +83,11 @@
                             :model-value="route.path.startsWith('/vendas')" expand-icon-toggle
                             active-class="text-primary bg-primary/5 rounded-borders" header-class="text-weight-medium">
                             <q-list class="q-pl-md q-py-none">
+                                <q-item clickable v-ripple to="/vendas/pdv" exact
+                                    active-class="text-primary bg-primary/10 rounded-borders">
+                                    <q-item-section avatar><q-icon name="storefront" size="sm" /></q-item-section>
+                                    <q-item-section>PDV</q-item-section>
+                                </q-item>
                                 <q-item clickable v-ripple to="/vendas/pedidos" exact
                                     active-class="text-primary bg-primary/10 rounded-borders">
                                     <q-item-section avatar><q-icon name="receipt_long" size="sm" /></q-item-section>
@@ -201,7 +206,7 @@ const toggleDrawer = () => {
 const routeGroups = {
     '/': 0,
     '/estoque': 1, '/estoque/produtos': 1, '/estoque/movimentacoes': 1,
-    '/vendas': 2, '/vendas/pedidos': 2, '/vendas/contas': 2,
+    '/vendas': 2, '/vendas/pdv': 2, '/vendas/pedidos': 2, '/vendas/contas': 2,
     '/clientes': 3,
     '/config': 4,
     '/login': 5
