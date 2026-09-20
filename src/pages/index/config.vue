@@ -31,9 +31,11 @@
             </q-list>
         </q-card>
 
+        <MeUsuario />
+
         <!-- Componente Sobre (Reutilizável com Props) -->
         <!-- Ajuste o caminho './Sobre.vue' se o arquivo estiver em uma pasta 'components' -->
-        <Sobre sistema-nome="Simples Gestão" versao="1.0.0" :desenvolvedores="listaDesenvolvedores" class="q-mb-md" />
+        <Sobre sistema-nome="Simples Gestão" versao="1.0.0" :desenvolvedores="listaDesenvolvedores" class="q-mt-md" />
 
         <!-- Card de Ação de Sessão -->
         <q-card class="no-shadow rounded-borders" bordered>
@@ -50,9 +52,8 @@
 import { ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
-
-// Importando o componente Sobre
 import Sobre from '@/components/Sobre.vue'
+import MeUsuario from '@/components/MeUsuario.vue'
 
 const $q = useQuasar()
 const router = useRouter()
