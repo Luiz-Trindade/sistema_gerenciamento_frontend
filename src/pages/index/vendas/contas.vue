@@ -39,23 +39,19 @@
             <q-table :rows="filteredContas" :columns="columns" row-key="id" :loading="loading"
                 :pagination="{ rowsPerPage: 15 }" flat class="responsive-table">
 
-                <template v-slot:body-cell-pedido_info="props">
+                <template v-slot:body-cell-conta="props">
                     <q-td :props="props">
                         <div class="text-weight-medium">Pedido #{{ props.row.pedido_id || props.row.pedido || 'N/A' }}
                         </div>
-                        <div class="text-caption text-grey-7">{{ props.row.cliente_nome || 'Cliente não informado' }}
+                        <div class="text-caption text-grey-7">
+                            {{ props.row.cliente_nome || 'Cliente não informado' }} ·
+                            Parcela {{ props.row.numero_parcela }}/{{ props.row.total_parcelas }}
                         </div>
-                    </q-td>
-                </template>
-
-                <template v-slot:body-cell-parcela="props">
-                    <q-td :props="props" class="text-center text-weight-bold">
-                        {{ props.row.numero_parcela }} / {{ props.row.total_parcelas }}
                     </q-td>
                 </template>
 
                 <template v-slot:body-cell-vencimento="props">
-                    <q-td :props="props" class="text-center">
+                    <q-td :props="props">
                         <div :class="isVencida(props.row) ? 'text-negative text-weight-bold' : 'text-grey-8'">
                             {{ formatDate(props.row.vencimento) }}
                         </div>
@@ -64,8 +60,8 @@
                 </template>
 
                 <template v-slot:body-cell-valores="props">
-                    <q-td :props="props" class="text-right">
-                        <div class="text-weight-medium">R$ {{ formatCurrency(props.row.valor) }}</div>
+                    <q-td :props="props">
+                        <div class="text-weight-bold">R$ {{ formatCurrency(props.row.valor) }}</div>
                         <div v-if="props.row.status !== 'paga' && props.row.status !== 'cancelada'"
                             class="text-caption text-orange">
                             Restante: R$ {{ formatCurrency((props.row.valor || 0) - (props.row.valor_pago || 0)) }}
@@ -74,8 +70,8 @@
                 </template>
 
                 <template v-slot:body-cell-status="props">
-                    <q-td :props="props" class="text-center">
-                        <q-badge :color="getStatusColor(props.row.status)" class="text-body2 q-pa-sm">
+                    <q-td :props="props">
+                        <q-badge :color="getStatusColor(props.row.status)" outline>
                             {{ formatStatus(props.row.status) }}
                         </q-badge>
                     </q-td>
@@ -172,22 +168,20 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useQuasar } from 'quasar'
 import { api } from '@/boot/axios'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 
 const $q = useQuasar()
+const queryClient = useQueryClient()
 
-// --- Estado ---
-const loading = ref(false)
-const saving = ref(false)
+// --- Estado Local (Apenas para controle de UI) ---
 const search = ref('')
 const filterStatus = ref(null)
 const dialog = ref(false)
 const isEditing = ref(false)
 const isPaymentMode = ref(false)
-const contas = ref([])
-const pedidos = ref([])
 
 const defaultForm = {
     id: null,
@@ -220,23 +214,47 @@ const meioPagamentoOptions = [
     { label: 'Outro', value: 'outro' }
 ]
 
-const pedidosOptions = computed(() => {
-    return pedidos.value.map(p => ({ label: `Pedido #${p.id} - ${p.cliente?.nome || 'N/A'}`, value: p.id }))
-})
-
-// --- Colunas da Tabela ---
 const columns = [
-    { name: 'pedido_info', label: 'Pedido / Cliente', align: 'left', sortable: true },
-    { name: 'parcela', label: 'Parcela', field: 'numero_parcela', align: 'center', sortable: true },
-    { name: 'vencimento', label: 'Vencimento', field: 'vencimento', align: 'center', sortable: true },
-    { name: 'valores', label: 'Valores', field: 'valor', align: 'right', sortable: true },
-    { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
-    { name: 'acoes', label: 'Ações', align: 'center' }
+    { name: 'conta', label: 'Conta', field: row => row.pedido_id || row.pedido, align: 'left', sortable: true },
+    { name: 'vencimento', label: 'Vencimento', field: 'vencimento', align: 'left', sortable: true },
+    { name: 'valores', label: 'Valor', field: 'valor', align: 'left', sortable: true },
+    { name: 'status', label: 'Status', field: 'status', align: 'left', sortable: true },
+    { name: 'acoes', label: 'Ações', field: 'id', align: 'right' }
 ]
 
+// ==========================================
+// 1. VUE QUERY: LEITURA (GET)
+// ==========================================
+// Query para Pedidos (usada para popular o select)
+const { data: pedidos } = useQuery({
+    queryKey: ['pedidos'],
+    queryFn: async () => {
+        const response = await api.get('/pedidos/')
+        return response.data
+    }
+})
+
+// Query para Contas a Receber (substitui `loading` e `contas` manuais)
+const {
+    data: contas,
+    isLoading: loading // Renomeado para manter compatibilidade com seu template
+} = useQuery({
+    queryKey: ['contas-receber'],
+    queryFn: async () => {
+        const response = await api.get('/contas-receber/')
+        return response.data
+    }
+})
+
 // --- Computed ---
+const pedidosOptions = computed(() => {
+    // Fallback para [] caso os dados ainda estejam carregando
+    return (pedidos.value || []).map(p => ({ label: `Pedido #${p.id} - ${p.cliente?.nome || 'N/A'}`, value: p.id }))
+})
+
 const filteredContas = computed(() => {
-    let result = contas.value
+    // Fallback para [] caso os dados ainda estejam carregando
+    let result = contas.value || []
 
     if (search.value) {
         const term = search.value.toLowerCase()
@@ -287,29 +305,7 @@ const getStatusColor = (status) => {
     return colors[status] || 'grey'
 }
 
-// --- API Calls ---
-const fetchPedidos = async () => {
-    try {
-        const response = await api.get('/pedidos/')
-        pedidos.value = response.data
-    } catch (error) {
-        console.error('Erro ao carregar pedidos:', error)
-    }
-}
-
-const fetchContas = async () => {
-    loading.value = true
-    try {
-        const response = await api.get('/contas-receber/')
-        contas.value = response.data
-    } catch (error) {
-        $q.notify({ color: 'negative', message: error.response?.data?.detail || 'Erro ao carregar contas', icon: 'error' })
-    } finally {
-        loading.value = false
-    }
-}
-
-// --- Ações do Usuário ---
+// --- Ações de UI ---
 const openDialog = (conta = null, paymentMode = false) => {
     isPaymentMode.value = paymentMode
 
@@ -338,42 +334,6 @@ const openDialog = (conta = null, paymentMode = false) => {
     dialog.value = true
 }
 
-const saveConta = async () => {
-    saving.value = true
-    try {
-        const payload = { ...form.value }
-        if (isPaymentMode.value) {
-            payload.status = 'paga'
-        }
-
-        if (isEditing.value) {
-            await api.put(`/contas-receber/${form.value.id}/`, payload)
-            $q.notify({
-                color: 'positive',
-                message: isPaymentMode.value ? 'Pagamento registrado com sucesso!' : 'Conta atualizada!',
-                icon: 'check'
-            })
-        } else {
-            await api.post('/contas-receber/', payload)
-            $q.notify({ color: 'positive', message: 'Conta criada com sucesso!', icon: 'check' })
-        }
-        dialog.value = false
-        fetchContas()
-    } catch (error) {
-        const data = error.response?.data
-        const errorMsg = data?.detail || data?.non_field_errors?.[0] || Object.values(data || {})[0]?.[0] || 'Erro ao salvar conta'
-
-        $q.notify({
-            color: 'negative',
-            message: errorMsg,
-            icon: 'error',
-            timeout: 5000
-        })
-    } finally {
-        saving.value = false
-    }
-}
-
 const confirmDelete = (conta) => {
     if (conta.status === 'paga') {
         $q.notify({ color: 'negative', message: 'Não é possível excluir uma conta já paga.', icon: 'block' })
@@ -386,25 +346,81 @@ const confirmDelete = (conta) => {
         cancel: true,
         persistent: true
     }).onOk(async () => {
-        try {
-            await api.delete(`/contas-receber/${conta.id}/`)
-            $q.notify({ color: 'positive', message: 'Conta excluída com sucesso', icon: 'delete' })
-            fetchContas()
-        } catch (error) {
-            $q.notify({
-                color: 'negative',
-                message: error.response?.data?.detail || 'Erro ao excluir conta',
-                icon: 'error'
-            })
-        }
+        await deletarConta(conta.id)
     })
 }
 
-// --- Lifecycle ---
-onMounted(() => {
-    fetchPedidos()
-    fetchContas()
+// ==========================================
+// 2. VUE QUERY: ESCRITA (POST / PUT)
+// ==========================================
+const { mutateAsync: saveContaMutation, isPending: saving } = useMutation({
+    mutationFn: async (payload) => {
+        if (payload.id) {
+            const response = await api.put(`/contas-receber/${payload.id}/`, payload)
+            return response.data
+        } else {
+            const response = await api.post('/contas-receber/', payload)
+            return response.data
+        }
+    },
+    onSuccess: () => {
+        // Invalida o cache para a tabela atualizar automaticamente
+        queryClient.invalidateQueries({ queryKey: ['contas-receber'] })
+    }
 })
+
+const saveConta = async () => {
+    try {
+        const payload = { ...form.value }
+        if (isPaymentMode.value) {
+            payload.status = 'paga'
+        }
+
+        await saveContaMutation(payload)
+
+        $q.notify({
+            color: 'positive',
+            message: isPaymentMode.value ? 'Pagamento registrado com sucesso!' : (isEditing.value ? 'Conta atualizada!' : 'Conta criada com sucesso!'),
+            icon: 'check'
+        })
+        dialog.value = false
+    } catch (error) {
+        const data = error.response?.data
+        const errorMsg = data?.detail || data?.non_field_errors?.[0] || Object.values(data || {})[0]?.[0] || 'Erro ao salvar conta'
+
+        $q.notify({
+            color: 'negative',
+            message: errorMsg,
+            icon: 'error',
+            timeout: 5000
+        })
+    }
+}
+
+// ==========================================
+// 3. VUE QUERY: EXCLUSÃO (DELETE)
+// ==========================================
+const { mutateAsync: deleteContaMutation } = useMutation({
+    mutationFn: async (id) => {
+        await api.delete(`/contas-receber/${id}/`)
+    },
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['contas-receber'] })
+    }
+})
+
+const deletarConta = async (id) => {
+    try {
+        await deleteContaMutation(id)
+        $q.notify({ color: 'positive', message: 'Conta excluída com sucesso', icon: 'delete' })
+    } catch (error) {
+        $q.notify({
+            color: 'negative',
+            message: error.response?.data?.detail || 'Erro ao excluir conta',
+            icon: 'error'
+        })
+    }
+}
 </script>
 
 <style scoped>

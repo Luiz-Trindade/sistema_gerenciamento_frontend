@@ -128,22 +128,20 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useQuasar } from 'quasar'
 import { api } from '@/boot/axios'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 
 const $q = useQuasar()
+const queryClient = useQueryClient()
 
-// --- Estado ---
-const loading = ref(false)
-const saving = ref(false)
+// --- Estado Local (Apenas para controle de UI) ---
 const search = ref('')
 const filterTipo = ref(null)
 const filterProduto = ref(null)
 const dialog = ref(false)
 const isEditing = ref(false)
-const movimentacoes = ref([])
-const produtos = ref([])
 
 const defaultForm = {
     id: null,
@@ -160,23 +158,39 @@ const tipoOptions = [
     { label: 'Saída', value: 'saida' }
 ]
 
-const produtoOptions = computed(() => {
-    return produtos.value.map(p => ({ label: p.nome, value: p.id }))
+// ==========================================
+// 1. VUE QUERY: LEITURA (GET)
+// ==========================================
+// Query para Produtos (usada para popular o select)
+const { data: produtos } = useQuery({
+    queryKey: ['produtos'],
+    queryFn: async () => {
+        const response = await api.get('/produtos/')
+        return response.data
+    }
 })
 
-// --- Colunas da Tabela ---
-const columns = [
-    { name: 'produto_nome', label: 'Produto', align: 'left', sortable: true },
-    { name: 'tipo', label: 'Tipo', field: 'tipo', align: 'center', sortable: true },
-    { name: 'quantidade', label: 'Quantidade', field: 'quantidade', align: 'center', sortable: true },
-    { name: 'observacao', label: 'Observação', field: 'observacao', align: 'left' },
-    { name: 'criado_em', label: 'Data/Hora', field: 'criado_em', align: 'left', sortable: true },
-    { name: 'actions', label: 'Ações', align: 'center' }
-]
+// Query para Movimentações (substitui o `loading` e `movimentacoes` manuais)
+const {
+    data: movimentacoes,
+    isLoading: loading
+} = useQuery({
+    queryKey: ['movimentacoes'],
+    queryFn: async () => {
+        const response = await api.get('/movimentacoes/')
+        return response.data
+    }
+})
 
 // --- Computed ---
+const produtoOptions = computed(() => {
+    // Fallback para [] caso os dados ainda estejam carregando
+    return (produtos.value || []).map(p => ({ label: p.nome, value: p.id }))
+})
+
 const filteredMovimentacoes = computed(() => {
-    let result = movimentacoes.value
+    // Fallback para [] caso os dados ainda estejam carregando
+    let result = movimentacoes.value || []
 
     if (search.value) {
         const term = search.value.toLowerCase()
@@ -199,7 +213,7 @@ const filteredMovimentacoes = computed(() => {
 
 // --- Métodos Auxiliares ---
 const getProdutoNome = (produtoId) => {
-    const prod = produtos.value.find(p => p.id === produtoId)
+    const prod = (produtos.value || []).find(p => p.id === produtoId)
     return prod ? prod.nome : `Produto ID: ${produtoId}`
 }
 
@@ -208,28 +222,6 @@ const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString('pt-BR', {
         day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
     })
-}
-
-// --- API Calls ---
-const fetchProdutos = async () => {
-    try {
-        const response = await api.get('/produtos/')
-        produtos.value = response.data
-    } catch (error) {
-        $q.notify({ color: 'negative', message: error.response?.data?.detail || 'Erro ao carregar produtos', icon: 'error' })
-    }
-}
-
-const fetchMovimentacoes = async () => {
-    loading.value = true
-    try {
-        const response = await api.get('/movimentacoes/')
-        movimentacoes.value = response.data
-    } catch (error) {
-        $q.notify({ color: 'negative', message: error.response?.data?.detail || 'Erro ao carregar movimentações', icon: 'error' })
-    } finally {
-        loading.value = false
-    }
 }
 
 const openDialog = (movimentacao = null) => {
@@ -249,24 +241,55 @@ const openDialog = (movimentacao = null) => {
     dialog.value = true
 }
 
-const saveMovimentacao = async () => {
-    saving.value = true
-    try {
-        if (isEditing.value) {
-            await api.put(`/movimentacoes/${form.value.id}/`, form.value)
-            $q.notify({ color: 'positive', message: 'Movimentação atualizada!', icon: 'check' })
+// ==========================================
+// 2. VUE QUERY: ESCRITA (POST / PUT)
+// ==========================================
+const { mutateAsync: saveMovimentacaoMutation, isPending: saving } = useMutation({
+    mutationFn: async ({ formData, isEditing }) => {
+        if (isEditing) {
+            const response = await api.put(`/movimentacoes/${formData.id}/`, formData)
+            return response.data
         } else {
-            await api.post('/movimentacoes/', form.value)
-            $q.notify({ color: 'positive', message: 'Movimentação registrada!', icon: 'check' })
+            const response = await api.post('/movimentacoes/', formData)
+            return response.data
         }
+    },
+    onSuccess: () => {
+        // Invalida o cache das movimentações para a tabela atualizar automaticamente
+        queryClient.invalidateQueries({ queryKey: ['movimentacoes'] })
+    }
+})
+
+const saveMovimentacao = async () => {
+    try {
+        await saveMovimentacaoMutation({ formData: form.value, isEditing: isEditing.value })
+
+        $q.notify({
+            color: 'positive',
+            message: isEditing.value ? 'Movimentação atualizada!' : 'Movimentação registrada!',
+            icon: 'check'
+        })
         dialog.value = false
-        fetchMovimentacoes()
     } catch (error) {
-        $q.notify({ color: 'negative', message: error.response?.data?.detail || 'Erro ao salvar movimentação', icon: 'error' })
-    } finally {
-        saving.value = false
+        $q.notify({
+            color: 'negative',
+            message: error.response?.data?.detail || 'Erro ao salvar movimentação',
+            icon: 'error'
+        })
     }
 }
+
+// ==========================================
+// 3. VUE QUERY: EXCLUSÃO (DELETE)
+// ==========================================
+const { mutateAsync: deleteMovimentacaoMutation } = useMutation({
+    mutationFn: async (id) => {
+        await api.delete(`/movimentacoes/${id}/`)
+    },
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['movimentacoes'] })
+    }
+})
 
 const confirmDelete = (movimentacao) => {
     const prodName = getProdutoNome(movimentacao.produto)
@@ -278,20 +301,17 @@ const confirmDelete = (movimentacao) => {
         persistent: true
     }).onOk(async () => {
         try {
-            await api.delete(`/movimentacoes/${movimentacao.id}/`)
+            await deleteMovimentacaoMutation(movimentacao.id)
             $q.notify({ color: 'positive', message: 'Movimentação excluída', icon: 'delete' })
-            fetchMovimentacoes()
         } catch (error) {
-            $q.notify({ color: 'negative', message: error.response?.data?.detail || 'Erro ao excluir movimentação', icon: 'error' })
+            $q.notify({
+                color: 'negative',
+                message: error.response?.data?.detail || 'Erro ao excluir movimentação',
+                icon: 'error'
+            })
         }
     })
 }
-
-// --- Lifecycle ---
-onMounted(() => {
-    fetchProdutos()
-    fetchMovimentacoes()
-})
 </script>
 
 <style scoped>

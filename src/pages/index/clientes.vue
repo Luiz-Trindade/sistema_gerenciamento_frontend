@@ -145,22 +145,19 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useQuasar } from 'quasar'
 import { api } from '@/boot/axios'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 
 const $q = useQuasar()
+const queryClient = useQueryClient()
 
-// --- Estado ---
-const loading = ref(false)
-const saving = ref(false)
-const deleting = ref(false)
+// --- Estado Local (Apenas para controle de UI) ---
 const filter = ref('')
 const dialog = ref(false)
 const isEditing = ref(false)
 const dialogExclusao = ref(false)
-
-const clientes = ref([])
 const clienteParaExcluir = ref(null)
 
 const defaultForm = {
@@ -182,35 +179,37 @@ const columns = [
     { name: 'acoes', label: 'Ações', align: 'center' }
 ]
 
+// ==========================================
+// 1. VUE QUERY: LEITURA (GET)
+// ==========================================
+// Substitui o `const clientes = ref([])`, `loading` e o `onMounted` + `fetchClientes`
+const {
+    data: clientes,
+    isLoading: loading // Renomeado para manter compatibilidade com seu template (:loading="loading")
+} = useQuery({
+    queryKey: ['clientes'],
+    queryFn: async () => {
+        const response = await api.get('/clientes/')
+        return response.data
+    }
+})
+
 // --- Computed (Filtro) ---
 const filteredClientes = computed(() => {
-    if (!filter.value) return clientes.value
+    // Fallback para [] caso os dados ainda estejam carregando (undefined)
+    const lista = clientes.value || []
+
+    if (!filter.value) return lista
+
     const term = filter.value.toLowerCase()
-    return clientes.value.filter(c =>
+    return lista.filter(c =>
         c.nome?.toLowerCase().includes(term) ||
         c.documento?.toLowerCase().includes(term) ||
         c.email?.toLowerCase().includes(term)
     )
 })
 
-// --- API Calls ---
-const fetchClientes = async () => {
-    loading.value = true
-    try {
-        const response = await api.get('/clientes/')
-        clientes.value = response.data
-    } catch (error) {
-        $q.notify({
-            color: 'negative',
-            message: error.response?.data?.detail || 'Erro ao carregar clientes',
-            icon: 'error'
-        })
-    } finally {
-        loading.value = false
-    }
-}
-
-// --- Ações do Usuário ---
+// --- Ações de UI ---
 const openDialog = (cliente = null) => {
     if (cliente) {
         isEditing.value = true
@@ -222,18 +221,40 @@ const openDialog = (cliente = null) => {
     dialog.value = true
 }
 
-const saveCliente = async () => {
-    saving.value = true
-    try {
-        if (isEditing.value) {
-            await api.put(`/clientes/${form.value.id}/`, form.value)
-            $q.notify({ color: 'positive', message: 'Cliente atualizado com sucesso!', icon: 'check' })
+const confirmarExclusao = (cliente) => {
+    clienteParaExcluir.value = cliente
+    dialogExclusao.value = true
+}
+
+// ==========================================
+// 2. VUE QUERY: ESCRITA (POST / PUT)
+// ==========================================
+const { mutateAsync: saveClienteMutation, isPending: saving } = useMutation({
+    mutationFn: async ({ formData, isEditing }) => {
+        if (isEditing) {
+            const response = await api.put(`/clientes/${formData.id}/`, formData)
+            return response.data
         } else {
-            await api.post('/clientes/', form.value)
-            $q.notify({ color: 'positive', message: 'Cliente cadastrado com sucesso!', icon: 'check' })
+            const response = await api.post('/clientes/', formData)
+            return response.data
         }
+    },
+    onSuccess: () => {
+        // Invalida o cache. A tabela será atualizada automaticamente em background.
+        queryClient.invalidateQueries({ queryKey: ['clientes'] })
+    }
+})
+
+const saveCliente = async () => {
+    try {
+        await saveClienteMutation({ formData: form.value, isEditing: isEditing.value })
+
+        $q.notify({
+            color: 'positive',
+            message: isEditing.value ? 'Cliente atualizado com sucesso!' : 'Cliente cadastrado com sucesso!',
+            icon: 'check'
+        })
         dialog.value = false
-        fetchClientes()
     } catch (error) {
         const data = error.response?.data
         const errorMsg = data?.detail || data?.non_field_errors?.[0] || Object.values(data || {})[0]?.[0] || 'Erro ao salvar cliente'
@@ -244,26 +265,30 @@ const saveCliente = async () => {
             icon: 'error',
             timeout: 5000
         })
-    } finally {
-        saving.value = false
     }
 }
 
-const confirmarExclusao = (cliente) => {
-    clienteParaExcluir.value = cliente
-    dialogExclusao.value = true
-}
+// ==========================================
+// 3. VUE QUERY: EXCLUSÃO (DELETE)
+// ==========================================
+const { mutateAsync: deleteClienteMutation, isPending: deleting } = useMutation({
+    mutationFn: async (id) => {
+        await api.delete(`/clientes/${id}/`)
+    },
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['clientes'] })
+    }
+})
 
 const deletarCliente = async () => {
     if (!clienteParaExcluir.value) return
 
-    deleting.value = true
     try {
-        await api.delete(`/clientes/${clienteParaExcluir.value.id}/`)
+        await deleteClienteMutation(clienteParaExcluir.value.id)
+
         $q.notify({ color: 'positive', message: 'Cliente excluído com sucesso', icon: 'delete' })
         dialogExclusao.value = false
         clienteParaExcluir.value = null
-        fetchClientes()
     } catch (error) {
         $q.notify({
             color: 'negative',
@@ -271,15 +296,8 @@ const deletarCliente = async () => {
             icon: 'error',
             timeout: 6000
         })
-    } finally {
-        deleting.value = false
     }
 }
-
-// --- Lifecycle ---
-onMounted(() => {
-    fetchClientes()
-})
 </script>
 
 <style scoped>

@@ -157,21 +157,18 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useQuasar } from 'quasar'
 import { api } from '@/boot/axios'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 
 const $q = useQuasar()
+const queryClient = useQueryClient()
 
 // --- Estado ---
-const loading = ref(false)
-const saving = ref(false)
 const search = ref('')
 const dialog = ref(false)
 const isEditing = ref(false)
-const pedidos = ref([])
-const clientes = ref([])
-const produtos = ref([])
 
 const defaultForm = {
     id: null,
@@ -200,10 +197,26 @@ const clientesOptions = computed(() => {
 })
 
 const produtosOptions = computed(() => {
-    return produtos.value.map(p => ({
+    return (produtos.value || []).map(p => ({
         label: `${p.nome} (Saldo: ${p.saldo_estoque ?? '?'})`,
         value: p.id
     }))
+})
+
+// --- Vue Query: Leituras ---
+const { data: clientes } = useQuery({
+    queryKey: ['clientes'],
+    queryFn: async () => (await api.get('/clientes/')).data
+})
+
+const { data: produtos } = useQuery({
+    queryKey: ['produtos'],
+    queryFn: async () => (await api.get('/produtos/')).data
+})
+
+const { data: pedidos, isLoading: loading } = useQuery({
+    queryKey: ['pedidos'],
+    queryFn: async () => (await api.get('/pedidos/')).data
 })
 
 // --- Colunas da Tabela ---
@@ -219,9 +232,10 @@ const columns = [
 
 // --- Computed ---
 const filteredPedidos = computed(() => {
-    if (!search.value) return pedidos.value
+    const lista = pedidos.value || []
+    if (!search.value) return lista
     const term = search.value.toLowerCase()
-    return pedidos.value.filter(p =>
+    return lista.filter(p =>
         p.id.toString().includes(term) ||
         (p.cliente?.nome && p.cliente.nome.toLowerCase().includes(term)) ||
         (p.cliente_nome && p.cliente_nome.toLowerCase().includes(term))
@@ -230,12 +244,12 @@ const filteredPedidos = computed(() => {
 
 // --- Métodos Auxiliares ---
 const getProdutoNome = (produtoId) => {
-    const prod = produtos.value.find(p => p.id === produtoId)
+    const prod = (produtos.value || []).find(p => p.id === produtoId)
     return prod ? prod.nome : `Produto ID: ${produtoId}`
 }
 
 const getProdutoPreco = (produtoId) => {
-    const prod = produtos.value.find(p => p.id === produtoId)
+    const prod = (produtos.value || []).find(p => p.id === produtoId)
     return prod ? prod.preco : 0
 }
 
@@ -280,37 +294,6 @@ const removeItem = (index) => {
     form.value.itens.splice(index, 1)
 }
 
-// --- Chamadas à API ---
-const fetchClientes = async () => {
-    try {
-        const response = await api.get('/clientes/')
-        clientes.value = response.data
-    } catch (error) {
-        $q.notify({ color: 'negative', message: error.response?.data?.detail || 'Erro ao carregar clientes', icon: 'error' })
-    }
-}
-
-const fetchProdutos = async () => {
-    try {
-        const response = await api.get('/produtos/')
-        produtos.value = response.data
-    } catch (error) {
-        $q.notify({ color: 'negative', message: error.response?.data?.detail || 'Erro ao carregar produtos', icon: 'error' })
-    }
-}
-
-const fetchPedidos = async () => {
-    loading.value = true
-    try {
-        const response = await api.get('/pedidos/')
-        pedidos.value = response.data
-    } catch (error) {
-        $q.notify({ color: 'negative', message: error.response?.data?.detail || 'Erro ao carregar pedidos', icon: 'error' })
-    } finally {
-        loading.value = false
-    }
-}
-
 // --- Ações do Usuário ---
 const openDialog = (pedido = null) => {
     if (pedido) {
@@ -329,32 +312,24 @@ const openDialog = (pedido = null) => {
     dialog.value = true
 }
 
+const { mutateAsync: savePedidoMutation, isPending: saving } = useMutation({
+    mutationFn: async ({ payload, editing, id }) => editing
+        ? (await api.put(`/pedidos/${id}/`, payload)).data
+        : (await api.post('/pedidos/', payload)).data,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pedidos'] })
+})
+
 const savePedido = async () => {
     if (!isEditing.value && form.value.itens.length === 0) {
         $q.notify({ color: 'warning', message: 'Adicione pelo menos um item ao pedido.', icon: 'warning' })
         return
     }
-
-    saving.value = true
     try {
-        if (isEditing.value) {
-            const payload = {
-                cliente: form.value.cliente,
-                status: form.value.status
-            }
-            await api.put(`/pedidos/${form.value.id}/`, payload)
-            $q.notify({ color: 'positive', message: 'Pedido atualizado com sucesso!', icon: 'check' })
-        } else {
-            const payload = {
-                cliente: form.value.cliente,
-                status: form.value.status,
-                itens: form.value.itens
-            }
-            await api.post('/pedidos/', payload)
-            $q.notify({ color: 'positive', message: 'Pedido criado e estoque reservado com sucesso!', icon: 'check' })
-        }
+        const payload = { cliente: form.value.cliente, status: form.value.status }
+        if (!isEditing.value) payload.itens = form.value.itens
+        await savePedidoMutation({ payload, editing: isEditing.value, id: form.value.id })
+        $q.notify({ color: 'positive', message: isEditing.value ? 'Pedido atualizado com sucesso!' : 'Pedido criado e estoque reservado com sucesso!', icon: 'check' })
         dialog.value = false
-        fetchPedidos()
     } catch (error) {
         const data = error.response?.data
         const errorMsg = data?.detail || data?.itens?.[0] || data?.non_field_errors?.[0] || 'Erro ao salvar pedido'
@@ -365,10 +340,13 @@ const savePedido = async () => {
             icon: 'error',
             timeout: 5000 // Tempo maior para ler erros de validação
         })
-    } finally {
-        saving.value = false
     }
 }
+
+const { mutateAsync: deletePedidoMutation } = useMutation({
+    mutationFn: async (id) => api.delete(`/pedidos/${id}/`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pedidos'] })
+})
 
 const confirmDelete = (pedido) => {
     $q.dialog({
@@ -378,9 +356,8 @@ const confirmDelete = (pedido) => {
         persistent: true
     }).onOk(async () => {
         try {
-            await api.delete(`/pedidos/${pedido.id}/`)
+            await deletePedidoMutation(pedido.id)
             $q.notify({ color: 'positive', message: 'Pedido excluído com sucesso', icon: 'delete' })
-            fetchPedidos()
         } catch (error) {
             $q.notify({
                 color: 'negative',
@@ -400,12 +377,6 @@ const gerenciarItens = (pedido) => {
     // router.push(`/vendas/pedidos/${pedido.id}/itens`)
 }
 
-// --- Lifecycle ---
-onMounted(() => {
-    fetchClientes()
-    fetchProdutos()
-    fetchPedidos()
-})
 </script>
 
 <style scoped>

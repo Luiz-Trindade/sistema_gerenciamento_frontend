@@ -127,7 +127,7 @@
 
                 <q-card-section class="q-pt-md q-gutter-md">
                     <div class="text-subtitle1 text-weight-bold">Total a Pagar: <span class="text-primary">R$ {{
-                            formatCurrency(totalPedido) }}</span></div>
+                        formatCurrency(totalPedido) }}</span></div>
 
                     <q-separator class="q-my-md" />
 
@@ -150,18 +150,16 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useQuasar } from 'quasar'
 import { api } from '@/boot/axios'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 
 const $q = useQuasar()
+const queryClient = useQueryClient()
 
 // --- Estado ---
-const loading = ref(false)
-const saving = ref(false)
 const search = ref('')
-const produtos = ref([])
-const clientes = ref([])
 const clienteId = ref(null)
 const carrinho = ref([])
 
@@ -170,8 +168,25 @@ const dialogPagamento = ref(false)
 const pagarAgora = ref(false)
 const meioPagamentoSelecionado = ref(null)
 
+// --- Vue Query: Leituras ---
+const { data: produtos } = useQuery({
+    queryKey: ['produtos'],
+    queryFn: async () => {
+        const response = await api.get('/produtos/')
+        return response.data
+    }
+})
+
+const { data: clientes } = useQuery({
+    queryKey: ['clientes'],
+    queryFn: async () => {
+        const response = await api.get('/clientes/')
+        return response.data
+    }
+})
+
 // --- Opções ---
-const clientesOptions = computed(() => clientes.value.map(c => ({ label: c.nome, value: c.id })))
+const clientesOptions = computed(() => (clientes.value || []).map(c => ({ label: c.nome, value: c.id })))
 
 const meioPagamentoOptions = [
     { label: 'Dinheiro', value: 'dinheiro' },
@@ -183,9 +198,10 @@ const meioPagamentoOptions = [
 
 // --- Computed ---
 const filteredProdutos = computed(() => {
-    if (!search.value) return produtos.value
+    const lista = produtos.value || []
+    if (!search.value) return lista
     const term = search.value.toLowerCase()
-    return produtos.value.filter(p => p.nome.toLowerCase().includes(term) && p.ativo)
+    return lista.filter(p => p.nome.toLowerCase().includes(term) && p.ativo)
 })
 
 const totalPedido = computed(() => {
@@ -227,30 +243,22 @@ const alterarQuantidade = (index, delta) => {
 
 const removerDoCarrinho = (index) => { carrinho.value.splice(index, 1) }
 
-// --- API Calls ---
-const fetchProdutos = async () => {
-    loading.value = true
-    try {
-        const response = await api.get('/produtos/')
-        produtos.value = response.data
-    } catch {
-        $q.notify({ color: 'negative', message: 'Erro ao carregar produtos', icon: 'error' })
-    } finally { loading.value = false }
-}
-
-const fetchClientes = async () => {
-    try {
-        const response = await api.get('/clientes/')
-        clientes.value = response.data
-    } catch (error) { console.error('Erro ao carregar clientes:', error) }
-}
-
 // --- Ações de Pagamento ---
 const abrirDialogPagamento = () => {
     pagarAgora.value = false
     meioPagamentoSelecionado.value = null
     dialogPagamento.value = true
 }
+
+const { mutateAsync: criarVenda, isPending: saving } = useMutation({
+    mutationFn: async (payload) => {
+        const response = await api.post('/pedidos/', payload)
+        return response.data
+    },
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['produtos'] })
+    }
+})
 
 const confirmarVenda = async () => {
     if (pagarAgora.value && !meioPagamentoSelecionado.value) {
@@ -269,7 +277,7 @@ const confirmarVenda = async () => {
             meio_pagamento: pagarAgora.value ? meioPagamentoSelecionado.value : null
         }
 
-        await api.post('/pedidos/', payload)
+        await criarVenda(payload)
 
         $q.notify({ color: 'positive', message: 'Venda finalizada com sucesso!', icon: 'check', timeout: 3000 })
 
@@ -278,7 +286,6 @@ const confirmarVenda = async () => {
         clienteId.value = null
         dialogPagamento.value = false
 
-        fetchProdutos() // Atualiza saldos
     } catch (error) {
         const data = error.response?.data
         const errorMsg = data?.detail || data?.itens?.[0] || data?.non_field_errors?.[0] || 'Erro ao finalizar venda'
@@ -287,11 +294,6 @@ const confirmarVenda = async () => {
         saving.value = false
     }
 }
-
-onMounted(() => {
-    fetchProdutos()
-    fetchClientes()
-})
 </script>
 
 <style scoped>

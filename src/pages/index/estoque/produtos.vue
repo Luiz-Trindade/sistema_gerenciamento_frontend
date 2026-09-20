@@ -115,19 +115,18 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useQuasar } from 'quasar'
 import { api } from '@/boot/axios'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 
 const $q = useQuasar()
+const queryClient = useQueryClient()
 
-// --- Estado ---
-const loading = ref(false)
-const saving = ref(false)
+// --- Estado Local (Apenas para controle de UI) ---
 const search = ref('')
 const dialog = ref(false)
 const isEditing = ref(false)
-const produtos = ref([])
 
 const defaultForm = {
     id: null,
@@ -148,37 +147,39 @@ const columns = [
     { name: 'actions', label: 'Ações', align: 'center' }
 ]
 
+// ==========================================
+// 1. VUE QUERY: LEITURA (GET)
+// ==========================================
+// Substitui o `const produtos = ref([])` e o `onMounted` + `fetchProdutos`
+const {
+    data: produtos, // Será um Ref reativo com os dados (ou undefined no primeiro load)
+    isLoading: loading
+} = useQuery({
+    queryKey: ['produtos'],
+    queryFn: async () => {
+        const response = await api.get('/produtos/')
+        return response.data
+    }
+})
+
 // --- Computed ---
 const filteredProdutos = computed(() => {
-    if (!search.value) return produtos.value
+    // Fallback para [] caso os dados ainda estejam carregando (undefined)
+    const lista = produtos.value || []
+
+    if (!search.value) return lista
+
     const term = search.value.toLowerCase()
-    return produtos.value.filter(p =>
+    return lista.filter(p =>
         p.nome.toLowerCase().includes(term) ||
         (p.descricao && p.descricao.toLowerCase().includes(term))
     )
 })
 
-// --- Métodos ---
+// --- Métodos Auxiliares ---
 const formatCurrency = (value) => {
     if (value === null || value === undefined) return '0,00'
     return parseFloat(value).toFixed(2).replace('.', ',')
-}
-
-const fetchProdutos = async () => {
-    loading.value = true
-    try {
-        const response = await api.get('/produtos/')
-        produtos.value = response.data
-    } catch (error) {
-        console.error('Erro ao carregar produtos:', error)
-        $q.notify({
-            color: 'negative',
-            message: error.response?.data?.detail || 'Erro ao carregar produtos',
-            icon: 'error'
-        })
-    } finally {
-        loading.value = false
-    }
 }
 
 const openDialog = (produto = null) => {
@@ -192,33 +193,58 @@ const openDialog = (produto = null) => {
     dialog.value = true
 }
 
-const saveProduto = async () => {
-    saving.value = true
-    try {
-        if (isEditing.value) {
-            const response = await api.put(`/produtos/${form.value.id}/`, form.value)
-            const index = produtos.value.findIndex(p => p.id === form.value.id)
-            if (index !== -1) {
-                produtos.value[index] = response.data
-            }
-            $q.notify({ color: 'positive', message: 'Produto atualizado com sucesso!', icon: 'check' })
+// ==========================================
+// 2. VUE QUERY: ESCRITA (POST / PUT)
+// ==========================================
+// Usamos mutateAsync para poder usar await e try/catch como no seu código original
+const { mutateAsync: saveProdutoMutation, isPending: saving } = useMutation({
+    mutationFn: async ({ formData, isEditing }) => {
+        if (isEditing) {
+            const response = await api.put(`/produtos/${formData.id}/`, formData)
+            return response.data
         } else {
-            const response = await api.post('/produtos/', form.value)
-            produtos.value.push(response.data)
-            $q.notify({ color: 'positive', message: 'Produto cadastrado com sucesso!', icon: 'check' })
+            const response = await api.post('/produtos/', formData)
+            return response.data
         }
+    },
+    onSuccess: () => {
+        // A MÁGICA: Invalida o cache. O Vue Query busca a lista atualizada do servidor 
+        // automaticamente em background. Não precisamos mais fazer push ou update manual no array.
+        queryClient.invalidateQueries({ queryKey: ['produtos'] })
+    }
+})
+
+const saveProduto = async () => {
+    try {
+        // Aguarda a mutação terminar. Se der erro, cai no catch.
+        await saveProdutoMutation({ formData: form.value, isEditing: isEditing.value })
+
+        $q.notify({
+            color: 'positive',
+            message: isEditing.value ? 'Produto atualizado com sucesso!' : 'Produto cadastrado com sucesso!',
+            icon: 'check'
+        })
         dialog.value = false
     } catch (error) {
-        console.error('Erro ao salvar produto:', error)
         $q.notify({
             color: 'negative',
             message: error.response?.data?.detail || 'Erro ao salvar produto',
             icon: 'error'
         })
-    } finally {
-        saving.value = false
     }
 }
+
+// ==========================================
+// 3. VUE QUERY: EXCLUSÃO (DELETE)
+// ==========================================
+const { mutateAsync: deleteProdutoMutation } = useMutation({
+    mutationFn: async (id) => {
+        await api.delete(`/produtos/${id}/`)
+    },
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['produtos'] })
+    }
+})
 
 const confirmDelete = (produto) => {
     $q.dialog({
@@ -228,11 +254,9 @@ const confirmDelete = (produto) => {
         persistent: true
     }).onOk(async () => {
         try {
-            await api.delete(`/produtos/${produto.id}/`)
-            produtos.value = produtos.value.filter(p => p.id !== produto.id)
+            await deleteProdutoMutation(produto.id)
             $q.notify({ color: 'positive', message: 'Produto excluído com sucesso', icon: 'delete' })
         } catch (error) {
-            console.error('Erro ao excluir produto:', error)
             $q.notify({
                 color: 'negative',
                 message: error.response?.data?.detail || 'Erro ao excluir produto',
@@ -246,11 +270,6 @@ const openMovimentacao = (produto) => {
     $q.notify({ message: `Abrir movimentação para: ${produto.nome}`, color: 'secondary', icon: 'swap_horiz' })
     // router.push({ name: 'movimentacoes', query: { produtoId: produto.id } })
 }
-
-// --- Lifecycle ---
-onMounted(() => {
-    fetchProdutos()
-})
 </script>
 
 <style scoped>
