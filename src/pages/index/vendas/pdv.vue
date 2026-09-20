@@ -19,17 +19,13 @@
                 <q-card bordered class="no-shadow">
                     <q-card-section class="q-pb-none">
                         <q-input v-model="search" dense outlined placeholder="Buscar produto por nome...">
-                            <template v-slot:prepend>
-                                <q-icon name="search" />
-                            </template>
+                            <template v-slot:prepend><q-icon name="search" /></template>
                             <template v-slot:append>
                                 <q-icon v-if="search" name="clear" class="cursor-pointer" @click="search = ''" />
                             </template>
                         </q-input>
                     </q-card-section>
-
                     <q-separator class="q-my-sm" />
-
                     <q-list separator class="produtos-list">
                         <q-item v-for="prod in filteredProdutos" :key="prod.id" clickable
                             @click="adicionarAoCarrinho(prod)" :class="{ 'text-grey-5': prod.saldo_estoque <= 0 }">
@@ -37,7 +33,7 @@
                                 <q-item-label class="text-weight-medium">{{ prod.nome }}</q-item-label>
                                 <q-item-label caption>
                                     <span class="text-primary text-weight-bold">R$ {{ formatCurrency(prod.preco)
-                                    }}</span>
+                                        }}</span>
                                     <span class="q-mx-xs">•</span>
                                     <span :class="prod.saldo_estoque > 0 ? 'text-positive' : 'text-negative'">
                                         Estoque: {{ prod.saldo_estoque }}
@@ -49,11 +45,9 @@
                                     @click.stop="adicionarAoCarrinho(prod)" :disable="prod.saldo_estoque <= 0" />
                             </q-item-section>
                         </q-item>
-
                         <q-item v-if="filteredProdutos.length === 0">
-                            <q-item-section class="text-center text-grey-6 q-pa-md">
-                                Nenhum produto encontrado.
-                            </q-item-section>
+                            <q-item-section class="text-center text-grey-6 q-pa-md">Nenhum produto
+                                encontrado.</q-item-section>
                         </q-item>
                     </q-list>
                 </q-card>
@@ -64,28 +58,23 @@
                 <q-card bordered class="no-shadow carrinho-card">
                     <q-card-section class="q-pb-sm">
                         <div class="text-h6 text-weight-bold flex items-center">
-                            <q-icon name="shopping_cart" class="q-mr-sm" />
-                            Pedido Atual
+                            <q-icon name="shopping_cart" class="q-mr-sm" /> Pedido Atual
                         </div>
                     </q-card-section>
-
                     <q-separator />
 
-                    <!-- Seleção de Cliente -->
                     <q-card-section class="q-py-sm">
                         <q-select v-model="clienteId" :options="clientesOptions" emit-value map-options outlined dense
                             label="Cliente (Opcional)" clearable placeholder="Consumidor Final" />
                     </q-card-section>
 
-                    <!-- Lista do Carrinho -->
                     <q-card-section class="q-pt-none carrinho-items">
                         <q-list v-if="carrinho.length > 0" separator>
                             <q-item v-for="(item, index) in carrinho" :key="index" dense class="q-py-sm">
                                 <q-item-section>
                                     <q-item-label class="text-weight-medium">{{ item.nome }}</q-item-label>
-                                    <q-item-label caption>
-                                        {{ item.quantidade }} x R$ {{ formatCurrency(item.preco) }}
-                                    </q-item-label>
+                                    <q-item-label caption>{{ item.quantidade }} x R$ {{ formatCurrency(item.preco)
+                                        }}</q-item-label>
                                 </q-item-section>
                                 <q-item-section side>
                                     <div class="row items-center no-wrap">
@@ -108,7 +97,6 @@
 
                     <q-space />
 
-                    <!-- Rodapé do Carrinho (Total e Ação) -->
                     <div class="carrinho-footer">
                         <q-separator />
                         <q-card-section>
@@ -118,16 +106,46 @@
                                 </div>
                             </div>
                         </q-card-section>
-
                         <q-card-section>
                             <q-btn color="positive" class="full-width" size="lg" icon="check_circle"
-                                label="Finalizar Venda" :loading="saving" @click="finalizarVenda"
+                                label="Finalizar Venda" :loading="saving" @click="abrirDialogPagamento"
                                 :disable="carrinho.length === 0" />
                         </q-card-section>
                     </div>
                 </q-card>
             </div>
         </div>
+
+        <!-- DIÁLOGO DE FINALIZAÇÃO / PAGAMENTO -->
+        <q-dialog v-model="dialogPagamento" persistent>
+            <q-card style="min-width: 350px; max-width: 500px">
+                <q-card-section class="row items-center q-pb-none">
+                    <div class="text-h6">Finalizar Venda</div>
+                    <q-space />
+                    <q-btn icon="close" flat round dense v-close-popup />
+                </q-card-section>
+
+                <q-card-section class="q-pt-md q-gutter-md">
+                    <div class="text-subtitle1 text-weight-bold">Total a Pagar: <span class="text-primary">R$ {{
+                            formatCurrency(totalPedido) }}</span></div>
+
+                    <q-separator class="q-my-md" />
+
+                    <q-toggle v-model="pagarAgora" label="Pagar agora?" color="positive" class="text-weight-medium" />
+
+                    <q-select v-if="pagarAgora" v-model="meioPagamentoSelecionado" :options="meioPagamentoOptions"
+                        emit-value map-options outlined dense label="Meio de Pagamento *"
+                        :rules="[val => pagarAgora ? !!val : true || 'Meio de pagamento é obrigatório']"
+                        class="q-mt-md" />
+                </q-card-section>
+
+                <q-card-actions align="right" class="q-pa-md">
+                    <q-btn flat label="Cancelar" color="grey-7" v-close-popup />
+                    <q-btn unelevated label="Confirmar Venda" color="positive" :loading="saving"
+                        @click="confirmarVenda" />
+                </q-card-actions>
+            </q-card>
+        </q-dialog>
     </q-page>
 </template>
 
@@ -147,18 +165,27 @@ const clientes = ref([])
 const clienteId = ref(null)
 const carrinho = ref([])
 
+// Estado do Diálogo de Pagamento
+const dialogPagamento = ref(false)
+const pagarAgora = ref(false)
+const meioPagamentoSelecionado = ref(null)
+
 // --- Opções ---
-const clientesOptions = computed(() => {
-    return clientes.value.map(c => ({ label: c.nome, value: c.id }))
-})
+const clientesOptions = computed(() => clientes.value.map(c => ({ label: c.nome, value: c.id })))
+
+const meioPagamentoOptions = [
+    { label: 'Dinheiro', value: 'dinheiro' },
+    { label: 'Pix', value: 'pix' },
+    { label: 'Cartão de Débito', value: 'cartao_debito' },
+    { label: 'Cartão de Crédito', value: 'cartao_credito' },
+    { label: 'Outro', value: 'outro' }
+]
 
 // --- Computed ---
 const filteredProdutos = computed(() => {
     if (!search.value) return produtos.value
     const term = search.value.toLowerCase()
-    return produtos.value.filter(p =>
-        p.nome.toLowerCase().includes(term) && p.ativo // Mostra apenas ativos
-    )
+    return produtos.value.filter(p => p.nome.toLowerCase().includes(term) && p.ativo)
 })
 
 const totalPedido = computed(() => {
@@ -173,9 +200,7 @@ const formatCurrency = (value) => {
 
 const adicionarAoCarrinho = (produto) => {
     if (produto.saldo_estoque <= 0) return
-
     const existente = carrinho.value.find(i => i.produto_id === produto.id)
-
     if (existente) {
         if (existente.quantidade < produto.saldo_estoque) {
             existente.quantidade++
@@ -184,11 +209,8 @@ const adicionarAoCarrinho = (produto) => {
         }
     } else {
         carrinho.value.push({
-            produto_id: produto.id,
-            nome: produto.nome,
-            preco: parseFloat(produto.preco),
-            quantidade: 1,
-            saldo_estoque: produto.saldo_estoque
+            produto_id: produto.id, nome: produto.nome, preco: parseFloat(produto.preco),
+            quantidade: 1, saldo_estoque: produto.saldo_estoque
         })
     }
 }
@@ -196,23 +218,14 @@ const adicionarAoCarrinho = (produto) => {
 const alterarQuantidade = (index, delta) => {
     const item = carrinho.value[index]
     const novaQtd = item.quantidade + delta
-
-    if (novaQtd <= 0) {
-        removerDoCarrinho(index)
-        return
-    }
-
+    if (novaQtd <= 0) { removerDoCarrinho(index); return }
     if (novaQtd > item.saldo_estoque) {
-        $q.notify({ color: 'warning', message: 'Estoque máximo atingido!', icon: 'warning' })
-        return
+        $q.notify({ color: 'warning', message: 'Estoque máximo atingido!', icon: 'warning' }); return
     }
-
     item.quantidade = novaQtd
 }
 
-const removerDoCarrinho = (index) => {
-    carrinho.value.splice(index, 1)
-}
+const removerDoCarrinho = (index) => { carrinho.value.splice(index, 1) }
 
 // --- API Calls ---
 const fetchProdutos = async () => {
@@ -222,66 +235,59 @@ const fetchProdutos = async () => {
         produtos.value = response.data
     } catch {
         $q.notify({ color: 'negative', message: 'Erro ao carregar produtos', icon: 'error' })
-    } finally {
-        loading.value = false
-    }
+    } finally { loading.value = false }
 }
 
 const fetchClientes = async () => {
     try {
         const response = await api.get('/clientes/')
         clientes.value = response.data
-    } catch (error) {
-        console.error('Erro ao carregar clientes:', error)
-    }
+    } catch (error) { console.error('Erro ao carregar clientes:', error) }
 }
 
-// --- Ação Principal ---
-const finalizarVenda = async () => {
-    if (carrinho.value.length === 0) return
+// --- Ações de Pagamento ---
+const abrirDialogPagamento = () => {
+    pagarAgora.value = false
+    meioPagamentoSelecionado.value = null
+    dialogPagamento.value = true
+}
+
+const confirmarVenda = async () => {
+    if (pagarAgora.value && !meioPagamentoSelecionado.value) {
+        $q.notify({ color: 'warning', message: 'Selecione o meio de pagamento.', icon: 'warning' })
+        return
+    }
 
     saving.value = true
     try {
         const payload = {
-            cliente: clienteId.value, // Pode ser null (Consumidor Final)
+            cliente: clienteId.value,
             status: 'criado',
-            itens: carrinho.value.map(i => ({
-                produto_id: i.produto_id,
-                quantidade: i.quantidade
-            }))
+            itens: carrinho.value.map(i => ({ produto_id: i.produto_id, quantidade: i.quantidade })),
+            // Novos campos enviados para o backend
+            pagar_agora: pagarAgora.value,
+            meio_pagamento: pagarAgora.value ? meioPagamentoSelecionado.value : null
         }
 
         await api.post('/pedidos/', payload)
 
-        $q.notify({
-            color: 'positive',
-            message: 'Venda finalizada! Estoque e financeiro atualizados.',
-            icon: 'check',
-            timeout: 4000
-        })
+        $q.notify({ color: 'positive', message: 'Venda finalizada com sucesso!', icon: 'check', timeout: 3000 })
 
-        // Limpa o PDV para a próxima venda
+        // Resetar estado
         carrinho.value = []
         clienteId.value = null
+        dialogPagamento.value = false
 
-        // Recarrega produtos para atualizar o saldo de estoque na tela
-        fetchProdutos()
-
+        fetchProdutos() // Atualiza saldos
     } catch (error) {
         const data = error.response?.data
         const errorMsg = data?.detail || data?.itens?.[0] || data?.non_field_errors?.[0] || 'Erro ao finalizar venda'
-        $q.notify({
-            color: 'negative',
-            message: errorMsg,
-            icon: 'error',
-            timeout: 6000
-        })
+        $q.notify({ color: 'negative', message: errorMsg, icon: 'error', timeout: 6000 })
     } finally {
         saving.value = false
     }
 }
 
-// --- Lifecycle ---
 onMounted(() => {
     fetchProdutos()
     fetchClientes()
@@ -314,7 +320,6 @@ onMounted(() => {
     margin-top: auto;
 }
 
-/* No desktop, deixa o carrinho "grudento" (sticky) ao rolar a página */
 @media (min-width: 1024px) {
     .carrinho-card {
         position: sticky;
