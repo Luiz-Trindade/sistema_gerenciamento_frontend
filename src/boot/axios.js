@@ -1,9 +1,19 @@
 import { boot } from 'quasar/wrappers'
 import axios from 'axios'
 
-// Instância personalizada do Axios
+// 1. Detecção dinâmica do ambiente baseada na URL do navegador
+const hostname = window.location.hostname
+const isLocalhost =
+    hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.')
+
+// 2. Define a URL padrão com base na detecção
+const defaultApiUrl = isLocalhost
+    ? 'http://192.168.0.20:8000/api' // Ajuste para http://localhost:8000/api se preferir
+    : 'https://api.simplesgestao.digitalizesistemas.com/api/'
+
+// 3. Cria a instância (Variável de ambiente tem prioridade, depois a lógica dinâmica)
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'http://192.168.0.20:8000/api',
+    baseURL: import.meta.env.VITE_API_URL || defaultApiUrl,
 })
 
 export default boot(({ app, router }) => {
@@ -37,10 +47,8 @@ export default boot(({ app, router }) => {
                     '[Axios Interceptor] Sessão expirada ou token inválido. Redirecionando...',
                 )
 
-                // Remove o token inválido
                 localStorage.removeItem('token')
 
-                // Redireciona para o login apenas se já não estiver na página de login
                 if (router.currentRoute.value.path !== '/login') {
                     router.push({
                         path: '/login',
@@ -53,10 +61,9 @@ export default boot(({ app, router }) => {
         },
     )
 
-    // Torna $axios e$api acessíveis via Options API (this.$api / this.$axios)
+    // Torna $axios e $api acessíveis via Options API
     app.config.globalProperties.$axios = axios
     app.config.globalProperties.$api = api
 })
 
-// Exporta a instância para ser usada em arquivos JS/TS, Composables e Stores
 export { api }
