@@ -33,7 +33,8 @@
                                 <q-item-section>Configurações</q-item-section>
                             </q-item>
                             <q-separator />
-                            <q-item clickable v-ripple v-close-popup @click="logout" class="text-negative">
+                            <!-- ALTERAÇÃO AQUI: Chama abrirModalLogout em vez de logout direto -->
+                            <q-item clickable v-ripple v-close-popup @click="abrirModalLogout" class="text-negative">
                                 <q-item-section avatar><q-icon name="logout" /></q-item-section>
                                 <q-item-section>Sair do Sistema</q-item-section>
                             </q-item>
@@ -130,7 +131,7 @@
             </div>
         </q-drawer>
 
-        <!-- ================= CONTAINER DE PÁGINAS (Mecânica Antiga Restaurada) ================= -->
+        <!-- ================= CONTAINER DE PÁGINAS ================= -->
         <q-page-container :class="['page-container-wrapper', $q.dark.isActive ? 'bg-dark-9' : 'bg-grey-3']">
             <router-view v-slot="{ Component }">
                 <transition :name="transitionName" mode="default">
@@ -140,27 +141,42 @@
         </q-page-container>
 
         <!-- ================= NAVEGAÇÃO INFERIOR (MOBILE) ================= -->
-        <!-- CORREÇÃO: 'exact' removido das abas pai para que permaneçam ativas nas subpáginas -->
         <q-footer v-if="route.path !== '/login'" bordered class="lt-md"
             :class="$q.dark.isActive ? 'bg-dark text-grey-4' : 'bg-white text-grey-8'">
             <q-tabs dense active-color="primary" indicator-color="transparent" align="justify"
                 class="text-caption q-py-xs">
-                <!-- Mantém 'exact' apenas na Home para não conflitar com outras rotas -->
                 <q-route-tab name="dash" icon="space_dashboard" label="Dash" to="/" exact />
-
-                <!-- Sem 'exact': destaca em /estoque, /estoque/produtos, /estoque/movimentacoes -->
                 <q-route-tab name="estoque" icon="inventory_2" label="Estoque" to="/estoque" />
-
-                <!-- Sem 'exact': destaca em /vendas, /vendas/pedidos, /vendas/contas -->
                 <q-route-tab name="vendas" icon="point_of_sale" label="Vendas" to="/vendas" />
-
-                <!-- Sem 'exact': destaca em /clientes e futuras subpáginas -->
                 <q-route-tab name="clientes" icon="people" label="Clientes" to="/clientes" />
-
-                <!-- Sem 'exact': destaca em /config e futuras subpáginas -->
                 <q-route-tab name="configuracoes" icon="settings" label="Config" to="/config" />
             </q-tabs>
         </q-footer>
+
+        <!-- ================= MODAL DE CONFIRMAÇÃO DE LOGOUT ================= -->
+        <q-dialog v-model="confirmLogoutDialog" persistent>
+            <q-card style="min-width: 350px">
+                <q-card-section class="row items-center q-pb-none">
+                    <q-avatar icon="logout" color="negative" text-color="white" class="q-mr-sm" />
+                    <div class="text-h6">Sair do sistema</div>
+                    <q-space />
+                    <q-btn icon="close" flat round dense v-close-popup aria-label="Fechar" />
+                </q-card-section>
+
+                <q-card-section class="q-pt-md">
+                    <div class="text-body1">Tem certeza de que deseja sair do sistema?</div>
+                    <div class="text-caption text-grey-7 q-mt-sm">
+                        Você precisará fazer login novamente para acessar o painel.
+                    </div>
+                </q-card-section>
+
+                <q-card-actions align="right" class="q-pb-md q-pr-md">
+                    <q-btn flat label="Cancelar" color="grey-7" v-close-popup class="q-mr-sm" />
+                    <!-- ALTERAÇÃO AQUI: Chama a função logout e fecha o popup -->
+                    <q-btn flat label="Sair" color="negative" unelevated @click="logout" v-close-popup />
+                </q-card-actions>
+            </q-card>
+        </q-dialog>
 
     </q-layout>
 </template>
@@ -173,6 +189,9 @@ import { useQuasar } from 'quasar'
 const $q = useQuasar()
 const route = useRoute()
 const router = useRouter()
+
+// --- ESTADO DO MODAL ---
+const confirmLogoutDialog = ref(false)
 
 // --- TEMA ---
 const toggleTheme = () => {
@@ -241,7 +260,15 @@ watch(
 )
 
 // --- AÇÕES ---
+
+// 1. Função para abrir o modal
+const abrirModalLogout = () => {
+    confirmLogoutDialog.value = true
+}
+
+// 2. Função que executa o logout de fato
 const logout = () => {
+    confirmLogoutDialog.value = false
     localStorage.removeItem('token')
     router.push('/login')
     $q.notify({ color: 'positive', message: 'Você saiu do sistema.', icon: 'check' })
