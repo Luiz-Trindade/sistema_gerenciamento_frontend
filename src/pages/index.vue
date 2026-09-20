@@ -1,97 +1,142 @@
 <template>
     <q-layout view="hHh LpR fFf">
 
-        <!-- Header Superior: Oculto na rota de login -->
-        <q-header v-if="route.path !== '/login'" bordered class="bg-primary text-white">
+        <!-- ================= HEADER SUPERIOR (Design Novo) ================= -->
+        <q-header v-if="route.path !== '/login'" bordered class="bg-primary text-white shadow-2">
             <q-toolbar class="q-pl-sm q-pr-md">
-                <q-btn flat dense round icon="menu" aria-label="Alternar menu lateral" @click="toggleDrawer"
+                <q-btn flat dense round icon="menu" aria-label="Alternar menu" @click="toggleDrawer"
                     class="gt-sm q-mr-sm" />
 
-                <q-toolbar-title>
-                    Sistema de Gerenciamento
+                <q-toolbar-title class="text-weight-bold tracking-wide flex items-center">
+                    <q-icon name="space_dashboard" class="q-mr-sm" size="24px" />
+                    <span class="gt-xs">Simples Gestão</span>
                 </q-toolbar-title>
 
-                <q-btn flat round icon="account_circle" aria-label="Perfil" to="/config" />
+                <q-space />
+
+                <q-btn flat round :icon="$q.dark.isActive ? 'dark_mode' : 'light_mode'" @click="toggleTheme"
+                    class="q-mr-sm">
+                    <q-tooltip>Alternar Tema</q-tooltip>
+                </q-btn>
+
+                <q-btn flat round>
+                    <q-avatar size="32px">
+                        <img src="https://cdn.quasar.dev/img/boy-avatar.png" alt="User">
+                    </q-avatar>
+                    <q-tooltip>Minha Conta</q-tooltip>
+                    <q-menu anchor="bottom right" self="top right" class="shadow-2">
+                        <q-list style="min-width: 180px">
+                            <q-item-label header class="text-grey-8">Olá, Usuário</q-item-label>
+                            <q-separator />
+                            <q-item clickable v-ripple v-close-popup to="/config">
+                                <q-item-section avatar><q-icon name="settings" color="primary" /></q-item-section>
+                                <q-item-section>Configurações</q-item-section>
+                            </q-item>
+                            <q-separator />
+                            <q-item clickable v-ripple v-close-popup @click="logout" class="text-negative">
+                                <q-item-section avatar><q-icon name="logout" /></q-item-section>
+                                <q-item-section>Sair do Sistema</q-item-section>
+                            </q-item>
+                        </q-list>
+                    </q-menu>
+                </q-btn>
             </q-toolbar>
         </q-header>
 
-        <!-- Drawer Lateral: Oculto na rota de login -->
-        <q-drawer v-if="route.path !== '/login'" v-model="leftDrawerOpen" bordered :width="240"
-            class="bg-dark text-white" style="height: 100vh; overflow-y: auto;">
-            <q-list padding class="q-pa-sm">
-                <q-item-label header class="text-primary text-weight-bold q-mb-md">
-                    Navegação
-                </q-item-label>
+        <!-- ================= DRAWER LATERAL (Design Novo) ================= -->
+        <q-drawer v-if="route.path !== '/login'" v-model="leftDrawerOpen" show-if-above :width="260" :breakpoint="1024"
+            bordered class="bg-dark text-white">
 
-                <!-- Dashboard -->
-                <q-item clickable v-ripple to="/" exact active-class="text-primary bg-primary/10 rounded-borders">
-                    <q-item-section avatar><q-icon name="space_dashboard" /></q-item-section>
-                    <q-item-section>Dashboard</q-item-section>
-                </q-item>
+            <div class="fit column no-wrap">
+                <div class="q-pa-md flex flex-center column">
+                    <q-icon name="inventory_2" size="42px" color="primary" />
+                    <div class="text-h6 text-weight-bold text-primary q-mt-xs">Simples Gestão</div>
+                </div>
+                <q-separator dark />
 
-                <!-- Estoque (Expansível) -->
-                <q-expansion-item icon="inventory_2" label="Estoque" to="/estoque"
-                    :model-value="route.path.startsWith('/estoque')" header-class="text-weight-medium"
-                    expand-icon-toggle active-class="text-primary">
-                    <q-list class="q-pl-md q-py-none">
-                        <q-item clickable v-ripple to="/estoque/produtos" exact
+                <q-scroll-area class="col">
+                    <q-list padding class="q-py-md">
+                        <q-item clickable v-ripple to="/" exact
                             active-class="text-primary bg-primary/10 rounded-borders">
-                            <q-item-section avatar><q-icon name="category" size="sm" /></q-item-section>
-                            <q-item-section>Produtos</q-item-section>
+                            <q-item-section avatar><q-icon name="space_dashboard" /></q-item-section>
+                            <q-item-section class="text-weight-medium">Dashboard</q-item-section>
                         </q-item>
-                        <q-item clickable v-ripple to="/estoque/movimentacoes" exact
+
+                        <q-expansion-item icon="inventory_2" label="Estoque" to="/estoque"
+                            :model-value="route.path.startsWith('/estoque')" expand-icon-toggle
+                            active-class="text-primary bg-primary/5 rounded-borders" header-class="text-weight-medium">
+                            <q-list class="q-pl-md q-py-none">
+                                <q-item clickable v-ripple to="/estoque/produtos" exact
+                                    active-class="text-primary bg-primary/10 rounded-borders">
+                                    <q-item-section avatar><q-icon name="category" size="sm" /></q-item-section>
+                                    <q-item-section>Produtos</q-item-section>
+                                </q-item>
+                                <q-item clickable v-ripple to="/estoque/movimentacoes" exact
+                                    active-class="text-primary bg-primary/10 rounded-borders">
+                                    <q-item-section avatar><q-icon name="swap_horiz" size="sm" /></q-item-section>
+                                    <q-item-section>Movimentações</q-item-section>
+                                </q-item>
+                            </q-list>
+                        </q-expansion-item>
+
+                        <q-expansion-item icon="point_of_sale" label="Vendas" to="/vendas"
+                            :model-value="route.path.startsWith('/vendas')" expand-icon-toggle
+                            active-class="text-primary bg-primary/5 rounded-borders" header-class="text-weight-medium">
+                            <q-list class="q-pl-md q-py-none">
+                                <q-item clickable v-ripple to="/vendas/pedidos" exact
+                                    active-class="text-primary bg-primary/10 rounded-borders">
+                                    <q-item-section avatar><q-icon name="receipt_long" size="sm" /></q-item-section>
+                                    <q-item-section>Pedidos</q-item-section>
+                                </q-item>
+                                <q-item clickable v-ripple to="/vendas/contas" exact
+                                    active-class="text-primary bg-primary/10 rounded-borders">
+                                    <q-item-section avatar><q-icon name="account_balance_wallet"
+                                            size="sm" /></q-item-section>
+                                    <q-item-section>Contas a Receber</q-item-section>
+                                </q-item>
+                            </q-list>
+                        </q-expansion-item>
+
+                        <q-item clickable v-ripple to="/clientes" exact
                             active-class="text-primary bg-primary/10 rounded-borders">
-                            <q-item-section avatar><q-icon name="swap_horiz" size="sm" /></q-item-section>
-                            <q-item-section>Movimentações</q-item-section>
+                            <q-item-section avatar><q-icon name="people" /></q-item-section>
+                            <q-item-section class="text-weight-medium">Clientes</q-item-section>
                         </q-item>
                     </q-list>
-                </q-expansion-item>
+                </q-scroll-area>
 
-                <!-- Vendas (Expansível) -->
-                <q-expansion-item icon="point_of_sale" label="Vendas" to="/vendas"
-                    :model-value="route.path.startsWith('/vendas')" header-class="text-weight-medium" expand-icon-toggle
-                    active-class="text-primary">
-                    <q-list class="q-pl-md q-py-none">
-                        <q-item clickable v-ripple to="/vendas/pedidos" exact
-                            active-class="text-primary bg-primary/10 rounded-borders">
-                            <q-item-section avatar><q-icon name="receipt_long" size="sm" /></q-item-section>
-                            <q-item-section>Pedidos</q-item-section>
-                        </q-item>
-                        <q-item clickable v-ripple to="/vendas/contas" exact
-                            active-class="text-primary bg-primary/10 rounded-borders">
-                            <q-item-section avatar><q-icon name="account_balance_wallet" size="sm" /></q-item-section>
-                            <q-item-section>Contas a Receber</q-item-section>
-                        </q-item>
-                    </q-list>
-                </q-expansion-item>
-
-                <!-- Clientes -->
-                <q-item clickable v-ripple to="/clientes" exact
-                    active-class="text-primary bg-primary/10 rounded-borders">
-                    <q-item-section avatar><q-icon name="people" /></q-item-section>
-                    <q-item-section>Clientes</q-item-section>
-                </q-item>
-
-                <q-separator class="q-my-md" color="grey-8" />
-
-                <!-- Configurações -->
-                <q-item clickable v-ripple to="/config" exact active-class="text-primary bg-primary/10 rounded-borders">
-                    <q-item-section avatar><q-icon name="settings" /></q-item-section>
-                    <q-item-section>Configurações</q-item-section>
-                </q-item>
-            </q-list>
+                <div class="q-pa-sm">
+                    <q-separator dark class="q-mb-sm" />
+                    <q-item clickable v-ripple to="/config" class="rounded-borders hover:bg-grey-9 text-white">
+                        <q-item-section avatar>
+                            <q-avatar size="36px">
+                                <img src="https://cdn.quasar.dev/img/boy-avatar.png" alt="User">
+                            </q-avatar>
+                        </q-item-section>
+                        <q-item-section>
+                            <q-item-label class="text-weight-bold text-body2">Administrador</q-item-label>
+                            <q-item-label caption class="text-grey-5">admin@simples.com</q-item-label>
+                        </q-item-section>
+                        <q-item-section side>
+                            <q-icon name="chevron_right" color="grey-5" />
+                        </q-item-section>
+                    </q-item>
+                </div>
+            </div>
         </q-drawer>
 
-        <!-- Container das Páginas com Transição Inteligente -->
+        <!-- ================= CONTAINER DE PÁGINAS (Mecânica Antiga Restaurada) ================= -->
+        <!-- A classe 'page-container-wrapper' com overflow hidden é o que impede o footer de pular -->
         <q-page-container :class="['page-container-wrapper', $q.dark.isActive ? 'bg-dark-9' : 'bg-grey-3']">
             <router-view v-slot="{ Component }">
+                <!-- mode="default" (simultâneo) + overflow hidden = footer estável -->
                 <transition :name="transitionName" mode="default">
                     <component :is="Component" :key="route.path" />
                 </transition>
             </router-view>
         </q-page-container>
 
-        <!-- Navegação Inferior: Oculto na rota de login -->
+        <!-- ================= NAVEGAÇÃO INFERIOR (MOBILE - Exatamente como o antigo) ================= -->
         <q-footer v-if="route.path !== '/login'" bordered class="lt-md"
             :class="$q.dark.isActive ? 'bg-dark text-grey-4' : 'bg-white text-grey-8'">
             <q-tabs dense active-color="primary" indicator-color="transparent" align="justify"
@@ -109,27 +154,28 @@
 
 <script setup>
 import { ref, watch, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 
 const $q = useQuasar()
 const route = useRoute()
+const router = useRouter()
 
-// --- INICIALIZAÇÃO DO TEMA ---
+// --- TEMA ---
+const toggleTheme = () => {
+    const newTheme = !$q.dark.isActive
+    $q.dark.set(newTheme)
+    localStorage.setItem('app-theme-preference', newTheme ? 'dark' : 'light')
+}
+
 onMounted(() => {
     const temaSalvo = localStorage.getItem('app-theme-preference')
-
-    if (temaSalvo === 'dark') {
-        $q.dark.set(true)
-    } else if (temaSalvo === 'light') {
-        $q.dark.set(false)
-    } else {
-        // Se não houver nada salvo, usa a preferência do sistema operacional do dispositivo
-        $q.dark.set('auto')
-    }
+    if (temaSalvo === 'dark') $q.dark.set(true)
+    else if (temaSalvo === 'light') $q.dark.set(false)
+    else $q.dark.set('auto')
 })
 
-// Estado do Drawer
+// --- DRAWER ---
 const leftDrawerOpen = ref($q.screen.gt.sm)
 
 watch(
@@ -143,8 +189,7 @@ const toggleDrawer = () => {
     leftDrawerOpen.value = !leftDrawerOpen.value
 }
 
-// --- LÓGICA DE TRANSIÇÃO INTELIGENTE ---
-
+// --- TRANSIÇÕES ---
 const routeGroups = {
     '/': 0,
     '/estoque': 1, '/estoque/produtos': 1, '/estoque/movimentacoes': 1,
@@ -163,7 +208,6 @@ watch(
         const fromIndex = routeGroups[fromPath] !== undefined ? routeGroups[fromPath] : 0
         const isDesktop = $q.screen.gt.sm
 
-        // Se estiver indo ou vindo do login, usa fade simples
         if (toPath === '/login' || fromPath === '/login') {
             transitionName.value = 'q-transition--fade'
             return
@@ -182,9 +226,21 @@ watch(
         }
     }
 )
+
+// --- AÇÕES ---
+const logout = () => {
+    localStorage.removeItem('token')
+    router.push('/login')
+    $q.notify({ color: 'positive', message: 'Você saiu do sistema.', icon: 'check' })
+}
 </script>
 
 <style scoped>
+/* 
+  ESSE É O SEGREDO: 
+  O overflow-y: hidden impede que o container cresça durante a transição 
+  (quando as duas páginas existem ao mesmo tempo), mantendo o footer fixo no lugar.
+*/
 .page-container-wrapper {
     overflow-x: hidden;
     overflow-y: hidden;
@@ -203,5 +259,69 @@ watch(
 :deep(.q-tab--active .q-tab__icon) {
     transform: scale(1.1);
     transition: transform 0.2s ease;
+}
+
+/* ==========================================
+   ANIMAÇÕES DE TRANSIÇÃO (Compatíveis com Quasar)
+   ========================================== */
+.q-transition--fade-enter-active,
+.q-transition--fade-leave-active {
+    transition: opacity 0.2s ease;
+}
+
+.q-transition--fade-enter-from,
+.q-transition--fade-leave-to {
+    opacity: 0;
+}
+
+.q-transition--slide-left-enter-active,
+.q-transition--slide-left-leave-active,
+.q-transition--slide-right-enter-active,
+.q-transition--slide-right-leave-active,
+.q-transition--slide-up-enter-active,
+.q-transition--slide-up-leave-active,
+.q-transition--slide-down-enter-active,
+.q-transition--slide-down-leave-active {
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+}
+
+.q-transition--slide-left-enter-from {
+    transform: translateX(100%);
+    opacity: 0;
+}
+
+.q-transition--slide-left-leave-to {
+    transform: translateX(-20%);
+    opacity: 0;
+}
+
+.q-transition--slide-right-enter-from {
+    transform: translateX(-100%);
+    opacity: 0;
+}
+
+.q-transition--slide-right-leave-to {
+    transform: translateX(20%);
+    opacity: 0;
+}
+
+.q-transition--slide-up-enter-from {
+    transform: translateY(100%);
+    opacity: 0;
+}
+
+.q-transition--slide-up-leave-to {
+    transform: translateY(-20%);
+    opacity: 0;
+}
+
+.q-transition--slide-down-enter-from {
+    transform: translateY(-100%);
+    opacity: 0;
+}
+
+.q-transition--slide-down-leave-to {
+    transform: translateY(20%);
+    opacity: 0;
 }
 </style>

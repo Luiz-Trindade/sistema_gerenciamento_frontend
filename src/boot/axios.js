@@ -3,7 +3,7 @@ import axios from 'axios'
 
 // Instância personalizada do Axios
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
+    baseURL: import.meta.env.VITE_API_URL || 'http://192.168.0.20:8000/api',
 })
 
 export default boot(({ app, router }) => {
