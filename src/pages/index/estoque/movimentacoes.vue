@@ -1,5 +1,5 @@
 <template>
-    <q-page class="q-pa-md">
+    <q-page class="q-pa-sm q-pa-md-sm">
         <!-- Breadcrumbs -->
         <q-breadcrumbs active-color="primary" separator-color="grey-4" class="q-mb-md">
             <q-breadcrumbs-el label="Início" icon="home" to="/" />
@@ -8,10 +8,11 @@
         </q-breadcrumbs>
 
         <!-- Cabeçalho -->
-        <div class="row items-center q-mb-md">
+        <div class="row items-center q-mb-md page-header">
             <div class="text-h5 text-weight-bold">Movimentações de Estoque</div>
             <q-space />
-            <q-btn color="primary" icon="add" label="Nova Movimentação" @click="openDialog()" class="q-ml-sm" />
+            <q-btn color="primary" icon="add" label="Nova Movimentação" @click="openDialog()"
+                class="q-ml-sm new-order-btn" />
         </div>
 
         <!-- Barra de Filtros -->
@@ -41,7 +42,7 @@
         <!-- Tabela -->
         <q-card bordered class="no-shadow">
             <q-table :rows="filteredMovimentacoes" :columns="columns" row-key="id" :loading="loading"
-                :pagination="{ rowsPerPage: 15, sortBy: 'criado_em', descending: true }" flat>
+                :pagination="{ rowsPerPage: 15, sortBy: 'criado_em', descending: true }" flat class="responsive-table">
 
                 <template v-slot:body-cell-produto_nome="props">
                     <q-td :props="props">
@@ -88,8 +89,8 @@
         </q-card>
 
         <!-- Diálogo -->
-        <q-dialog v-model="dialog" persistent>
-            <q-card class="q-pa-md" style="min-width: 400px; max-width: 600px">
+        <q-dialog v-model="dialog" persistent maximized>
+            <q-card class="q-pa-sm q-pa-md-sm movimentacao-dialog-card">
                 <q-card-section class="row items-center q-pb-none">
                     <div class="text-h6">{{ isEditing ? 'Editar' : 'Nova' }} Movimentação</div>
                     <q-space />
@@ -236,7 +237,7 @@ const openDialog = (movimentacao = null) => {
         isEditing.value = true
         form.value = {
             id: movimentacao.id,
-            produto: movimentacao.produto, // Já é o ID vindo da API
+            produto: movimentacao.produto,
             tipo: movimentacao.tipo,
             quantidade: movimentacao.quantidade,
             observacao: movimentacao.observacao || ''
@@ -259,7 +260,7 @@ const saveMovimentacao = async () => {
             $q.notify({ color: 'positive', message: 'Movimentação registrada!', icon: 'check' })
         }
         dialog.value = false
-        fetchMovimentacoes() // Recarrega para garantir sincronia com o saldo do backend
+        fetchMovimentacoes()
     } catch (error) {
         $q.notify({ color: 'negative', message: error.response?.data?.detail || 'Erro ao salvar movimentação', icon: 'error' })
     } finally {
@@ -300,5 +301,53 @@ onMounted(() => {
 
 .text-negative {
     color: var(--q-negative);
+}
+
+.page-header {
+    min-height: 40px;
+}
+
+.new-order-btn {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.responsive-table {
+    width: 100%;
+}
+
+/* Estilização para o Dialog Maximized ficar elegante e centralizado em telas grandes */
+.movimentacao-dialog-card {
+    max-width: 600px;
+    width: 100%;
+    margin: auto;
+    /* Centraliza horizontal e verticalmente dentro do container maximized */
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+@media (max-width: 599px) {
+    .page-header {
+        align-items: stretch;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .page-header .text-h5 {
+        width: 100%;
+        font-size: 1.25rem;
+    }
+
+    .new-order-btn {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    /* No mobile, o dialog maximized ocupa 100% da tela sem margens */
+    .movimentacao-dialog-card {
+        max-width: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+        margin: 0;
+    }
 }
 </style>

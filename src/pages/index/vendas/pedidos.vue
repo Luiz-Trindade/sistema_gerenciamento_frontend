@@ -1,7 +1,6 @@
 <template>
-    <q-page class="q-pa-md">
-
-        <!-- Breadcrumbs (Navegação estrutural) -->
+    <q-page class="q-pa-sm q-pa-md-sm">
+        <!-- Breadcrumbs -->
         <q-breadcrumbs active-color="primary" separator-color="grey-4" class="q-mb-md">
             <q-breadcrumbs-el label="Início" icon="home" to="/" />
             <q-breadcrumbs-el label="Vendas" icon="point_of_sale" to="/vendas" />
@@ -9,17 +8,17 @@
         </q-breadcrumbs>
 
         <!-- Cabeçalho da Página -->
-        <div class="row items-center q-mb-md">
+        <div class="row items-center q-mb-md page-header">
             <div class="text-h5 text-weight-bold">Pedidos de Venda</div>
             <q-space />
-            <q-btn color="primary" icon="add" label="Novo Pedido" @click="openDialog()" class="q-ml-sm" />
+            <q-btn color="primary" icon="add" label="Novo Pedido" @click="openDialog()" class="q-ml-sm new-order-btn" />
         </div>
 
         <!-- Barra de Ferramentas (Busca) -->
         <q-card class="q-mb-md no-shadow" bordered>
             <q-card-section class="row items-center q-py-sm">
                 <q-input v-model="search" dense outlined placeholder="Buscar por cliente ou nº do pedido..."
-                    class="col-12 col-sm-6">
+                    class="col-12 col-sm-8 col-md-6">
                     <template v-slot:prepend>
                         <q-icon name="search" />
                     </template>
@@ -33,15 +32,14 @@
         <!-- Tabela de Pedidos -->
         <q-card bordered class="no-shadow">
             <q-table :rows="filteredPedidos" :columns="columns" row-key="id" :loading="loading"
-                :pagination="{ rowsPerPage: 10 }" flat>
-                <!-- Template: Valor Total -->
+                :pagination="{ rowsPerPage: 10 }" flat class="responsive-table">
+
                 <template v-slot:body-cell-valor_total="props">
                     <q-td :props="props" class="text-weight-medium text-right">
                         R$ {{ formatCurrency(props.row.valor_total) }}
                     </q-td>
                 </template>
 
-                <!-- Template: Status -->
                 <template v-slot:body-cell-status="props">
                     <q-td :props="props" class="text-center">
                         <q-badge :color="getStatusColor(props.row.status)" class="text-body2 q-pa-sm">
@@ -50,21 +48,19 @@
                     </q-td>
                 </template>
 
-                <!-- Template: Data -->
                 <template v-slot:body-cell-criado_em="props">
                     <q-td :props="props" class="text-grey-7">
                         {{ formatDate(props.row.criado_em) }}
                     </q-td>
                 </template>
 
-                <!-- Template: Ações -->
                 <template v-slot:body-cell-acoes="props">
                     <q-td :props="props" class="text-center">
                         <q-btn flat round color="secondary" icon="list" size="sm" @click="gerenciarItens(props.row)">
                             <q-tooltip>Gerenciar Itens</q-tooltip>
                         </q-btn>
                         <q-btn flat round color="primary" icon="edit" size="sm" @click="openDialog(props.row)">
-                            <q-tooltip>Editar</q-tooltip>
+                            <q-tooltip>Editar Status/Cliente</q-tooltip>
                         </q-btn>
                         <q-btn flat round color="negative" icon="delete" size="sm" @click="confirmDelete(props.row)">
                             <q-tooltip>Excluir</q-tooltip>
@@ -76,7 +72,7 @@
 
         <!-- Diálogo de Cadastro/Edição -->
         <q-dialog v-model="dialog" persistent maximized>
-            <q-card class="q-pa-md">
+            <q-card class="q-pa-sm q-pa-md-sm pedido-dialog-card">
                 <q-card-section class="row items-center q-pb-none">
                     <div class="text-h6">{{ isEditing ? 'Editar' : 'Novo' }} Pedido</div>
                     <q-space />
@@ -91,18 +87,67 @@
                         <q-select v-model="form.status" :options="statusOptions" emit-value map-options outlined dense
                             label="Status *" :rules="[val => !!val || 'Status é obrigatório']" />
 
-                        <q-banner v-if="!isEditing" class="bg-orange-1 text-orange-9 rounded-borders">
+                        <!-- Seção de Itens (Apenas na Criação) -->
+                        <div v-if="!isEditing" class="q-mt-md">
+                            <q-separator class="q-mb-md" />
+                            <div class="text-subtitle2 text-weight-bold q-mb-sm">Itens do Pedido</div>
+
+                            <!-- Adicionar Item -->
+                            <div class="row q-col-gutter-sm q-mb-md items-end">
+                                <div class="col-12 col-sm-6">
+                                    <q-select v-model="tempItem.produto_id" :options="produtosOptions" emit-value
+                                        map-options outlined dense label="Produto *"
+                                        :rules="[val => !!val || 'Produto é obrigatório']" />
+                                </div>
+                                <div class="col-6 col-sm-3">
+                                    <q-input v-model.number="tempItem.quantidade" type="number" min="1" outlined dense
+                                        label="Qtd *" :rules="[val => val >= 1 || 'Mínimo 1']" />
+                                </div>
+                                <div class="col-6 col-sm-3">
+                                    <q-btn color="primary" icon="add" label="Adicionar" @click="addItem"
+                                        class="full-width" :disable="!tempItem.produto_id || tempItem.quantidade < 1" />
+                                </div>
+                            </div>
+
+                            <!-- Lista de Itens Adicionados -->
+                            <q-list bordered separator class="rounded-borders" v-if="form.itens.length > 0">
+                                <q-item v-for="(item, index) in form.itens" :key="index">
+                                    <q-item-section>
+                                        <q-item-label class="text-weight-medium">{{ getProdutoNome(item.produto_id)
+                                        }}</q-item-label>
+                                        <q-item-label caption>
+                                            Qtd: {{ item.quantidade }} x R$ {{
+                                                formatCurrency(getProdutoPreco(item.produto_id))
+                                            }}
+                                        </q-item-label>
+                                    </q-item-section>
+                                    <q-item-section side class="column items-end">
+                                        <div class="text-weight-bold text-primary q-mb-xs">
+                                            R$ {{ formatCurrency(item.quantidade * getProdutoPreco(item.produto_id)) }}
+                                        </div>
+                                        <q-btn flat round color="negative" icon="close" size="sm"
+                                            @click="removeItem(index)">
+                                            <q-tooltip>Remover item</q-tooltip>
+                                        </q-btn>
+                                    </q-item-section>
+                                </q-item>
+                            </q-list>
+                            <q-banner v-else class="bg-grey-2 text-grey-8 rounded-borders">
+                                Nenhum item adicionado ainda.
+                            </q-banner>
+                        </div>
+
+                        <q-banner v-if="!isEditing" class="bg-orange-1 text-orange-9 rounded-borders q-mt-md">
                             <template v-slot:avatar>
                                 <q-icon name="info" color="orange" />
                             </template>
-                            O valor total será calculado automaticamente ao adicionar os itens (movimentações) ao
-                            pedido.
+                            O valor total e a baixa no estoque serão processados automaticamente ao criar o pedido.
                         </q-banner>
 
                         <div class="row justify-end q-mt-md">
                             <q-btn label="Cancelar" color="grey-7" flat v-close-popup class="q-mr-sm" />
-                            <q-btn :label="isEditing ? 'Salvar' : 'Criar'" color="primary" type="submit"
-                                :loading="saving" />
+                            <q-btn :label="isEditing ? 'Salvar Alterações' : 'Criar Pedido'" color="primary"
+                                type="submit" :loading="saving" />
                         </div>
                     </q-form>
                 </q-card-section>
@@ -114,7 +159,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
-// import api from 'src/boot/axios'
+import { api } from '@/boot/axios'
 
 const $q = useQuasar()
 
@@ -126,13 +171,21 @@ const dialog = ref(false)
 const isEditing = ref(false)
 const pedidos = ref([])
 const clientes = ref([])
+const produtos = ref([])
 
 const defaultForm = {
     id: null,
     cliente: null,
-    status: 'criado'
+    status: 'criado',
+    itens: []
 }
 const form = ref({ ...defaultForm })
+
+const tempItem = ref({
+    produto_id: null,
+    quantidade: 1,
+    observacao: ''
+})
 
 // --- Opções ---
 const statusOptions = [
@@ -146,15 +199,22 @@ const clientesOptions = computed(() => {
     return clientes.value.map(c => ({ label: c.nome, value: c.id }))
 })
 
+const produtosOptions = computed(() => {
+    return produtos.value.map(p => ({
+        label: `${p.nome} (Saldo: ${p.saldo_estoque ?? '?'})`,
+        value: p.id
+    }))
+})
+
 // --- Colunas da Tabela ---
 const columns = [
     { name: 'id', label: 'Nº', field: 'id', align: 'center', sortable: true },
-    { name: 'cliente_nome', label: 'Cliente', field: row => row.cliente?.nome || 'N/A', align: 'left', sortable: true },
+    { name: 'cliente_nome', label: 'Cliente', field: row => row.cliente?.nome || row.cliente_nome || `ID: ${row.cliente}`, align: 'left', sortable: true },
     { name: 'criado_em', label: 'Data', field: 'criado_em', align: 'left', sortable: true },
     { name: 'quantidade_total', label: 'Itens', field: 'quantidade_total', align: 'center', sortable: true },
     { name: 'valor_total', label: 'Valor Total', field: 'valor_total', align: 'right', sortable: true },
     { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
-    { name: 'acoes', label: 'Ações', field: 'acoes', align: 'center' }
+    { name: 'acoes', label: 'Ações', align: 'center' }
 ]
 
 // --- Computed ---
@@ -163,12 +223,24 @@ const filteredPedidos = computed(() => {
     const term = search.value.toLowerCase()
     return pedidos.value.filter(p =>
         p.id.toString().includes(term) ||
-        (p.cliente?.nome && p.cliente.nome.toLowerCase().includes(term))
+        (p.cliente?.nome && p.cliente.nome.toLowerCase().includes(term)) ||
+        (p.cliente_nome && p.cliente_nome.toLowerCase().includes(term))
     )
 })
 
 // --- Métodos Auxiliares ---
+const getProdutoNome = (produtoId) => {
+    const prod = produtos.value.find(p => p.id === produtoId)
+    return prod ? prod.nome : `Produto ID: ${produtoId}`
+}
+
+const getProdutoPreco = (produtoId) => {
+    const prod = produtos.value.find(p => p.id === produtoId)
+    return prod ? prod.preco : 0
+}
+
 const formatCurrency = (value) => {
+    if (value === null || value === undefined) return '0,00'
     return parseFloat(value).toFixed(2).replace('.', ',')
 }
 
@@ -194,35 +266,48 @@ const getStatusColor = (status) => {
     return colors[status] || 'grey'
 }
 
-// --- API / Mock ---
-const fetchPedidos = async () => {
-    loading.value = true
+// --- Lógica de Itens ---
+const addItem = () => {
+    if (!tempItem.value.produto_id || tempItem.value.quantidade < 1) {
+        $q.notify({ color: 'warning', message: 'Selecione um produto e uma quantidade válida.', icon: 'warning' })
+        return
+    }
+    form.value.itens.push({ ...tempItem.value })
+    tempItem.value = { produto_id: null, quantidade: 1, observacao: '' }
+}
+
+const removeItem = (index) => {
+    form.value.itens.splice(index, 1)
+}
+
+// --- Chamadas à API ---
+const fetchClientes = async () => {
     try {
-        // MOCK: Substitua por api.get('/api/pedidos/')
-        await new Promise(resolve => setTimeout(resolve, 600))
-        pedidos.value = [
-            { id: 101, cliente: { id: 1, nome: 'Luiz Gabriel Trindade' }, status: 'concluido', valor_total: 4750.50, quantidade_total: 2, criado_em: '2023-10-25T10:00:00Z' },
-            { id: 102, cliente: { id: 2, nome: 'Empresa Tech Solutions LTDA' }, status: 'processando', valor_total: 1200.00, quantidade_total: 5, criado_em: '2023-10-26T14:30:00Z' },
-            { id: 103, cliente: { id: 3, nome: 'Maria da Silva' }, status: 'criado', valor_total: 380.00, quantidade_total: 1, criado_em: '2023-10-27T09:15:00Z' },
-        ]
-    } catch {
-        $q.notify({ color: 'negative', message: 'Erro ao carregar pedidos', icon: 'error' })
-    } finally {
-        loading.value = false
+        const response = await api.get('/clientes/')
+        clientes.value = response.data
+    } catch (error) {
+        $q.notify({ color: 'negative', message: error.response?.data?.detail || 'Erro ao carregar clientes', icon: 'error' })
     }
 }
 
-const fetchClientes = async () => {
+const fetchProdutos = async () => {
     try {
-        // MOCK: Substitua por api.get('/api/clientes/')
-        await new Promise(resolve => setTimeout(resolve, 300))
-        clientes.value = [
-            { id: 1, nome: 'Luiz Gabriel Trindade' },
-            { id: 2, nome: 'Empresa Tech Solutions LTDA' },
-            { id: 3, nome: 'Maria da Silva' },
-        ]
-    } catch {
-        $q.notify({ color: 'negative', message: 'Erro ao carregar clientes', icon: 'error' })
+        const response = await api.get('/produtos/')
+        produtos.value = response.data
+    } catch (error) {
+        $q.notify({ color: 'negative', message: error.response?.data?.detail || 'Erro ao carregar produtos', icon: 'error' })
+    }
+}
+
+const fetchPedidos = async () => {
+    loading.value = true
+    try {
+        const response = await api.get('/pedidos/')
+        pedidos.value = response.data
+    } catch (error) {
+        $q.notify({ color: 'negative', message: error.response?.data?.detail || 'Erro ao carregar pedidos', icon: 'error' })
+    } finally {
+        loading.value = false
     }
 }
 
@@ -232,49 +317,54 @@ const openDialog = (pedido = null) => {
         isEditing.value = true
         form.value = {
             id: pedido.id,
-            cliente: pedido.cliente?.id,
-            status: pedido.status
+            cliente: pedido.cliente?.id || pedido.cliente,
+            status: pedido.status,
+            itens: [] // Edição de itens é feita via "Gerenciar Itens"
         }
     } else {
         isEditing.value = false
         form.value = { ...defaultForm }
+        tempItem.value = { produto_id: null, quantidade: 1, observacao: '' }
     }
     dialog.value = true
 }
 
 const savePedido = async () => {
+    if (!isEditing.value && form.value.itens.length === 0) {
+        $q.notify({ color: 'warning', message: 'Adicione pelo menos um item ao pedido.', icon: 'warning' })
+        return
+    }
+
     saving.value = true
     try {
-        // MOCK: Substitua por api.post() ou api.put()
-        await new Promise(resolve => setTimeout(resolve, 800))
-
-        const clienteSelecionado = clientes.value.find(c => c.id === form.value.cliente)
-
         if (isEditing.value) {
-            const index = pedidos.value.findIndex(p => p.id === form.value.id)
-            if (index !== -1) {
-                pedidos.value[index] = {
-                    ...pedidos.value[index],
-                    cliente: clienteSelecionado,
-                    status: form.value.status
-                }
+            const payload = {
+                cliente: form.value.cliente,
+                status: form.value.status
             }
+            await api.put(`/pedidos/${form.value.id}/`, payload)
             $q.notify({ color: 'positive', message: 'Pedido atualizado com sucesso!', icon: 'check' })
         } else {
-            const newId = pedidos.value.length > 0 ? Math.max(...pedidos.value.map(p => p.id)) + 1 : 100
-            pedidos.value.push({
-                id: newId,
-                cliente: clienteSelecionado,
+            const payload = {
+                cliente: form.value.cliente,
                 status: form.value.status,
-                valor_total: 0.00, // Será calculado pelo Django ao adicionar movimentações
-                quantidade_total: 0,
-                criado_em: new Date().toISOString()
-            })
-            $q.notify({ color: 'positive', message: 'Pedido criado! Adicione os itens agora.', icon: 'check' })
+                itens: form.value.itens
+            }
+            await api.post('/pedidos/', payload)
+            $q.notify({ color: 'positive', message: 'Pedido criado e estoque reservado com sucesso!', icon: 'check' })
         }
         dialog.value = false
-    } catch {
-        $q.notify({ color: 'negative', message: 'Erro ao salvar pedido', icon: 'error' })
+        fetchPedidos()
+    } catch (error) {
+        const data = error.response?.data
+        const errorMsg = data?.detail || data?.itens?.[0] || data?.non_field_errors?.[0] || 'Erro ao salvar pedido'
+
+        $q.notify({
+            color: 'negative',
+            message: errorMsg,
+            icon: 'error',
+            timeout: 5000 // Tempo maior para ler erros de validação
+        })
     } finally {
         saving.value = false
     }
@@ -283,34 +373,82 @@ const savePedido = async () => {
 const confirmDelete = (pedido) => {
     $q.dialog({
         title: 'Confirmar exclusão',
-        message: `Deseja realmente excluir o pedido #${pedido.id}?`,
+        message: `Deseja realmente excluir o pedido #${pedido.id}? Esta ação não poderá ser desfeita e o estoque NÃO será reposto automaticamente.`,
         cancel: true,
         persistent: true
     }).onOk(async () => {
-        // MOCK: Substitua por api.delete(`/api/pedidos/${pedido.id}/`)
-        pedidos.value = pedidos.value.filter(p => p.id !== pedido.id)
-        $q.notify({ color: 'positive', message: 'Pedido excluído', icon: 'delete' })
+        try {
+            await api.delete(`/pedidos/${pedido.id}/`)
+            $q.notify({ color: 'positive', message: 'Pedido excluído com sucesso', icon: 'delete' })
+            fetchPedidos()
+        } catch (error) {
+            $q.notify({
+                color: 'negative',
+                message: error.response?.data?.detail || 'Erro ao excluir pedido',
+                icon: 'error'
+            })
+        }
     })
 }
 
 const gerenciarItens = (pedido) => {
-    // Aqui você pode redirecionar para uma tela de detalhes do pedido 
-    // ou abrir um diálogo complexo para adicionar Movimentacao (ManyToMany)
     $q.notify({
-        message: `Gerenciando itens do Pedido #${pedido.id}`,
+        message: `Redirecionando para gerenciamento de itens do Pedido #${pedido.id}...`,
         color: 'secondary',
         icon: 'list'
     })
-    // Exemplo: router.push(`/vendas/pedidos/${pedido.id}/itens`)
+    // router.push(`/vendas/pedidos/${pedido.id}/itens`)
 }
 
 // --- Lifecycle ---
 onMounted(() => {
     fetchClientes()
+    fetchProdutos()
     fetchPedidos()
 })
 </script>
 
 <style scoped>
-/* Ajustes finos de layout se necessário */
+.page-header {
+    min-height: 40px;
+}
+
+.new-order-btn {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.responsive-table {
+    width: 100%;
+}
+
+.pedido-dialog-card {
+    width: min(700px, calc(100vw - 24px));
+    min-width: 0;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+@media (max-width: 599px) {
+    .page-header {
+        align-items: stretch;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .page-header .text-h5 {
+        width: 100%;
+        font-size: 1.25rem;
+    }
+
+    .new-order-btn {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .pedido-dialog-card {
+        width: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+    }
+}
 </style>

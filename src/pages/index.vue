@@ -126,26 +126,34 @@
         </q-drawer>
 
         <!-- ================= CONTAINER DE PÁGINAS (Mecânica Antiga Restaurada) ================= -->
-        <!-- A classe 'page-container-wrapper' com overflow hidden é o que impede o footer de pular -->
         <q-page-container :class="['page-container-wrapper', $q.dark.isActive ? 'bg-dark-9' : 'bg-grey-3']">
             <router-view v-slot="{ Component }">
-                <!-- mode="default" (simultâneo) + overflow hidden = footer estável -->
                 <transition :name="transitionName" mode="default">
                     <component :is="Component" :key="route.path" />
                 </transition>
             </router-view>
         </q-page-container>
 
-        <!-- ================= NAVEGAÇÃO INFERIOR (MOBILE - Exatamente como o antigo) ================= -->
+        <!-- ================= NAVEGAÇÃO INFERIOR (MOBILE) ================= -->
+        <!-- CORREÇÃO: 'exact' removido das abas pai para que permaneçam ativas nas subpáginas -->
         <q-footer v-if="route.path !== '/login'" bordered class="lt-md"
             :class="$q.dark.isActive ? 'bg-dark text-grey-4' : 'bg-white text-grey-8'">
             <q-tabs dense active-color="primary" indicator-color="transparent" align="justify"
                 class="text-caption q-py-xs">
+                <!-- Mantém 'exact' apenas na Home para não conflitar com outras rotas -->
                 <q-route-tab name="dash" icon="space_dashboard" label="Dash" to="/" exact />
-                <q-route-tab name="estoque" icon="inventory_2" label="Estoque" to="/estoque" exact />
-                <q-route-tab name="vendas" icon="point_of_sale" label="Vendas" to="/vendas" exact />
-                <q-route-tab name="clientes" icon="people" label="Clientes" to="/clientes" exact />
-                <q-route-tab name="configuracoes" icon="settings" label="Config" to="/config" exact />
+
+                <!-- Sem 'exact': destaca em /estoque, /estoque/produtos, /estoque/movimentacoes -->
+                <q-route-tab name="estoque" icon="inventory_2" label="Estoque" to="/estoque" />
+
+                <!-- Sem 'exact': destaca em /vendas, /vendas/pedidos, /vendas/contas -->
+                <q-route-tab name="vendas" icon="point_of_sale" label="Vendas" to="/vendas" />
+
+                <!-- Sem 'exact': destaca em /clientes e futuras subpáginas -->
+                <q-route-tab name="clientes" icon="people" label="Clientes" to="/clientes" />
+
+                <!-- Sem 'exact': destaca em /config e futuras subpáginas -->
+                <q-route-tab name="configuracoes" icon="settings" label="Config" to="/config" />
             </q-tabs>
         </q-footer>
 
@@ -236,11 +244,6 @@ const logout = () => {
 </script>
 
 <style scoped>
-/* 
-  ESSE É O SEGREDO: 
-  O overflow-y: hidden impede que o container cresça durante a transição 
-  (quando as duas páginas existem ao mesmo tempo), mantendo o footer fixo no lugar.
-*/
 .page-container-wrapper {
     overflow-x: hidden;
     overflow-y: hidden;
@@ -261,9 +264,6 @@ const logout = () => {
     transition: transform 0.2s ease;
 }
 
-/* ==========================================
-   ANIMAÇÕES DE TRANSIÇÃO (Compatíveis com Quasar)
-   ========================================== */
 .q-transition--fade-enter-active,
 .q-transition--fade-leave-active {
     transition: opacity 0.2s ease;

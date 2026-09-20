@@ -1,5 +1,5 @@
 <template>
-    <q-page class="q-pa-md">
+    <q-page class="q-pa-xs q-pa-sm-sm produtos-page">
         <!-- Breadcrumbs (Navegação estrutural) -->
         <q-breadcrumbs active-color="primary" separator-color="grey-4" class="q-mb-md">
             <q-breadcrumbs-el label="Início" icon="home" to="/" />
@@ -8,17 +8,18 @@
         </q-breadcrumbs>
 
         <!-- Cabeçalho da Página -->
-        <div class="row items-center q-mb-md">
+        <div class="row items-center q-mb-md page-header">
             <div class="text-h5 text-weight-bold">Produtos</div>
             <q-space />
-            <q-btn color="primary" icon="add" label="Novo Produto" @click="openDialog()" class="q-ml-sm" />
+            <q-btn color="primary" icon="add" label="Novo Produto" @click="openDialog()"
+                class="q-ml-sm new-order-btn" />
         </div>
 
         <!-- Barra de Ferramentas (Busca) -->
         <q-card class="q-mb-md no-shadow" bordered>
-            <q-card-section class="row items-center q-py-sm">
+            <q-card-section class="row items-center q-py-sm q-px-sm">
                 <q-input v-model="search" dense outlined placeholder="Buscar por nome ou descrição..."
-                    class="col-12 col-sm-6">
+                    class="col-12 col-sm-8 col-md-6">
                     <template v-slot:prepend>
                         <q-icon name="search" />
                     </template>
@@ -32,10 +33,10 @@
         <!-- Tabela de Produtos -->
         <q-card bordered class="no-shadow">
             <q-table :rows="filteredProdutos" :columns="columns" row-key="id" :loading="loading"
-                :pagination="{ rowsPerPage: 10 }" flat>
+                :pagination="{ rowsPerPage: 10 }" flat class="responsive-table" table-style="min-width: 700px">
 
                 <template v-slot:body-cell-preco="props">
-                    <q-td :props="props" class="text-weight-medium">
+                    <q-td :props="props" class="text-weight-medium text-right">
                         R$ {{ formatCurrency(props.row.preco) }}
                     </q-td>
                 </template>
@@ -75,8 +76,8 @@
         </q-card>
 
         <!-- Diálogo de Cadastro/Edição -->
-        <q-dialog v-model="dialog" persistent>
-            <q-card class="q-pa-md" style="min-width: 400px; max-width: 600px">
+        <q-dialog v-model="dialog" persistent maximized>
+            <q-card class="q-pa-sm q-pa-md-sm produto-dialog-card">
                 <q-card-section class="row items-center q-pb-none">
                     <div class="text-h6">{{ isEditing ? 'Editar' : 'Novo' }} Produto</div>
                     <q-space />
@@ -101,7 +102,7 @@
                             </div>
                         </div>
 
-                        <div class="row justify-end q-mt-md">
+                        <div class="row justify-end q-mt-md form-actions">
                             <q-btn label="Cancelar" color="grey-7" flat v-close-popup class="q-mr-sm" />
                             <q-btn :label="isEditing ? 'Salvar' : 'Cadastrar'" color="primary" type="submit"
                                 :loading="saving" />
@@ -116,7 +117,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
-import { api } from '@/boot/axios' // Importação nomeada conforme seu boot/axios.js
+import { api } from '@/boot/axios'
 
 const $q = useQuasar()
 
@@ -144,7 +145,7 @@ const columns = [
     { name: 'preco', label: 'Preço', field: 'preco', align: 'right', sortable: true },
     { name: 'saldo_estoque', label: 'Saldo', field: 'saldo_estoque', align: 'center', sortable: true },
     { name: 'ativo', label: 'Status', field: 'ativo', align: 'center', sortable: true },
-    { name: 'actions', label: 'Ações', align: 'center' } // 'field' removido pois é coluna virtual
+    { name: 'actions', label: 'Ações', align: 'center' }
 ]
 
 // --- Computed ---
@@ -242,9 +243,8 @@ const confirmDelete = (produto) => {
 }
 
 const openMovimentacao = (produto) => {
-    // Exemplo de redirecionamento futuro:
-    // router.push({ name: 'movimentacoes', query: { produtoId: produto.id } })
     $q.notify({ message: `Abrir movimentação para: ${produto.nome}`, color: 'secondary', icon: 'swap_horiz' })
+    // router.push({ name: 'movimentacoes', query: { produtoId: produto.id } })
 }
 
 // --- Lifecycle ---
@@ -252,3 +252,76 @@ onMounted(() => {
     fetchProdutos()
 })
 </script>
+
+<style scoped>
+.page-header {
+    min-height: 40px;
+}
+
+.new-order-btn {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.responsive-table {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.responsive-table :deep(.q-table__middle) {
+    overflow-x: auto;
+}
+
+.form-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.produto-dialog-card {
+    width: min(600px, calc(100vw - 24px));
+    min-width: 0;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+@media (max-width: 599px) {
+    .produtos-page {
+        padding: 8px;
+    }
+
+    .q-breadcrumbs {
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .page-header {
+        align-items: stretch;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .page-header .text-h5 {
+        width: 100%;
+        font-size: 1.25rem;
+    }
+
+    .new-order-btn {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .form-actions {
+        justify-content: stretch;
+    }
+
+    .form-actions .q-btn {
+        flex: 1 1 100%;
+        margin: 0;
+    }
+
+    .produto-dialog-card {
+        width: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+    }
+}
+</style>
