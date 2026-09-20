@@ -57,8 +57,8 @@
         <!-- ========================================== -->
         <!-- DIÁLOGO DE ALTERAÇÃO DE SENHA              -->
         <!-- ========================================== -->
-        <q-dialog v-model="dialogSenha" persistent>
-            <q-card style="min-width: 350px; max-width: 500px">
+        <q-dialog v-model="dialogSenha" persistent maximized>
+            <q-card class="password-dialog-card">
                 <q-card-section class="row items-center q-pb-none">
                     <div class="text-h6">Alterar Senha</div>
                     <q-space />
@@ -67,20 +67,36 @@
 
                 <q-card-section class="q-pt-md">
                     <q-form @submit="submitChangePassword" class="q-gutter-md">
-                        <q-input v-model="formSenha.current_password" label="Senha Atual *" type="password" outlined
-                            dense :rules="[val => !!val || 'Senha atual é obrigatória']" lazy-rules />
+                        <q-input v-model="formSenha.current_password" label="Senha Atual *"
+                            :type="showSenhaAtual ? 'text' : 'password'" outlined dense
+                            :rules="[val => !!val || 'Senha atual é obrigatória']" lazy-rules>
+                            <template #append>
+                                <q-icon :name="showSenhaAtual ? 'visibility_off' : 'visibility'" class="cursor-pointer"
+                                    @click="showSenhaAtual = !showSenhaAtual" />
+                            </template>
+                        </q-input>
 
-                        <q-input v-model="formSenha.new_password" label="Nova Senha *" type="password" outlined dense
-                            :rules="[
+                        <q-input v-model="formSenha.new_password" label="Nova Senha *"
+                            :type="showNovaSenha ? 'text' : 'password'" outlined dense :rules="[
                                 val => !!val || 'Nova senha é obrigatória',
                                 val => val.length >= 6 || 'Mínimo de 6 caracteres'
-                            ]" lazy-rules />
+                            ]" lazy-rules>
+                            <template #append>
+                                <q-icon :name="showNovaSenha ? 'visibility_off' : 'visibility'" class="cursor-pointer"
+                                    @click="showNovaSenha = !showNovaSenha" />
+                            </template>
+                        </q-input>
 
-                        <q-input v-model="formSenha.confirm_password" label="Confirmar Nova Senha *" type="password"
-                            outlined dense :rules="[
+                        <q-input v-model="formSenha.confirm_password" label="Confirmar Nova Senha *"
+                            :type="showConfirmacaoSenha ? 'text' : 'password'" outlined dense :rules="[
                                 val => !!val || 'Confirmação é obrigatória',
                                 val => val === formSenha.new_password || 'As senhas não conferem'
-                            ]" lazy-rules />
+                            ]" lazy-rules>
+                            <template #append>
+                                <q-icon :name="showConfirmacaoSenha ? 'visibility_off' : 'visibility'"
+                                    class="cursor-pointer" @click="showConfirmacaoSenha = !showConfirmacaoSenha" />
+                            </template>
+                        </q-input>
 
                         <div class="row justify-end q-mt-md">
                             <q-btn flat label="Cancelar" color="grey-7" v-close-popup class="q-mr-sm" />
@@ -157,6 +173,9 @@ const resetForm = () => {
 // ==========================================
 const dialogSenha = ref(false)
 const formSenha = ref({ current_password: '', new_password: '', confirm_password: '' })
+const showSenhaAtual = ref(false)
+const showNovaSenha = ref(false)
+const showConfirmacaoSenha = ref(false)
 
 const { mutateAsync: changePasswordMutation, isPending: isChangingPassword } = useMutation({
     mutationFn: async (payload) => {
@@ -198,5 +217,19 @@ const submitChangePassword = async () => {
 
 .q-inner-loading {
     border-radius: inherit;
+}
+
+.password-dialog-card {
+    width: min(100%, 500px);
+    max-width: 100%;
+    margin: auto;
+}
+
+@media (max-width: 599px) {
+    .password-dialog-card {
+        width: 100%;
+        min-height: 100%;
+        border-radius: 0;
+    }
 }
 </style>
