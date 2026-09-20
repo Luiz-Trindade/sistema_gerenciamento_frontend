@@ -1,14 +1,13 @@
 <template>
     <q-page class="q-pa-md">
-
-        <!-- Breadcrumbs (Navegação estrutural) -->
+        <!-- Breadcrumbs -->
         <q-breadcrumbs active-color="primary" separator-color="grey-4" class="q-mb-md">
             <q-breadcrumbs-el label="Início" icon="home" to="/" />
             <q-breadcrumbs-el label="Estoque" icon="inventory_2" to="/estoque" />
             <q-breadcrumbs-el label="Movimentações" icon="swap_horiz" />
         </q-breadcrumbs>
 
-        <!-- Cabeçalho da Página -->
+        <!-- Cabeçalho -->
         <div class="row items-center q-mb-md">
             <div class="text-h5 text-weight-bold">Movimentações de Estoque</div>
             <q-space />
@@ -19,7 +18,7 @@
         <q-card class="q-mb-md no-shadow" bordered>
             <q-card-section class="row q-col-gutter-sm q-py-sm">
                 <div class="col-12 col-sm-6">
-                    <q-input v-model="search" dense outlined placeholder="Buscar por produto...">
+                    <q-input v-model="search" dense outlined placeholder="Buscar por produto ou observação...">
                         <template v-slot:prepend>
                             <q-icon name="search" />
                         </template>
@@ -39,11 +38,17 @@
             </q-card-section>
         </q-card>
 
-        <!-- Tabela de Movimentações -->
+        <!-- Tabela -->
         <q-card bordered class="no-shadow">
             <q-table :rows="filteredMovimentacoes" :columns="columns" row-key="id" :loading="loading"
                 :pagination="{ rowsPerPage: 15, sortBy: 'criado_em', descending: true }" flat>
-                <!-- Template para colunas personalizadas -->
+
+                <template v-slot:body-cell-produto_nome="props">
+                    <q-td :props="props">
+                        {{ getProdutoNome(props.row.produto) }}
+                    </q-td>
+                </template>
+
                 <template v-slot:body-cell-tipo="props">
                     <q-td :props="props" class="text-center">
                         <q-badge :color="props.row.tipo === 'entrada' ? 'positive' : 'negative'"
@@ -82,9 +87,9 @@
             </q-table>
         </q-card>
 
-        <!-- Diálogo de Cadastro/Edição -->
-        <q-dialog v-model="dialog" persistent maximized>
-            <q-card class="q-pa-md">
+        <!-- Diálogo -->
+        <q-dialog v-model="dialog" persistent>
+            <q-card class="q-pa-md" style="min-width: 400px; max-width: 600px">
                 <q-card-section class="row items-center q-pb-none">
                     <div class="text-h6">{{ isEditing ? 'Editar' : 'Nova' }} Movimentação</div>
                     <q-space />
@@ -124,7 +129,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
-// import api from 'src/boot/axios'
+import { api } from '@/boot/axios'
 
 const $q = useQuasar()
 
@@ -160,12 +165,12 @@ const produtoOptions = computed(() => {
 
 // --- Colunas da Tabela ---
 const columns = [
-    { name: 'produto_nome', label: 'Produto', field: row => row.produto?.nome || '-', align: 'left', sortable: true },
+    { name: 'produto_nome', label: 'Produto', align: 'left', sortable: true },
     { name: 'tipo', label: 'Tipo', field: 'tipo', align: 'center', sortable: true },
     { name: 'quantidade', label: 'Quantidade', field: 'quantidade', align: 'center', sortable: true },
     { name: 'observacao', label: 'Observação', field: 'observacao', align: 'left' },
     { name: 'criado_em', label: 'Data/Hora', field: 'criado_em', align: 'left', sortable: true },
-    { name: 'actions', label: 'Ações', field: 'actions', align: 'center' }
+    { name: 'actions', label: 'Ações', align: 'center' }
 ]
 
 // --- Computed ---
@@ -174,10 +179,10 @@ const filteredMovimentacoes = computed(() => {
 
     if (search.value) {
         const term = search.value.toLowerCase()
-        result = result.filter(m =>
-            m.produto?.nome.toLowerCase().includes(term) ||
-            (m.observacao && m.observacao.toLowerCase().includes(term))
-        )
+        result = result.filter(m => {
+            const prodName = getProdutoNome(m.produto).toLowerCase()
+            return prodName.includes(term) || (m.observacao && m.observacao.toLowerCase().includes(term))
+        })
     }
 
     if (filterTipo.value) {
@@ -185,74 +190,44 @@ const filteredMovimentacoes = computed(() => {
     }
 
     if (filterProduto.value) {
-        result = result.filter(m => m.produto?.id === filterProduto.value)
+        result = result.filter(m => m.produto === filterProduto.value)
     }
 
     return result
 })
 
-// --- Métodos ---
+// --- Métodos Auxiliares ---
+const getProdutoNome = (produtoId) => {
+    const prod = produtos.value.find(p => p.id === produtoId)
+    return prod ? prod.nome : `Produto ID: ${produtoId}`
+}
+
 const formatDate = (dateString) => {
     if (!dateString) return '-'
-    const date = new Date(dateString)
-    return date.toLocaleString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+    return new Date(dateString).toLocaleString('pt-BR', {
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
     })
+}
+
+// --- API Calls ---
+const fetchProdutos = async () => {
+    try {
+        const response = await api.get('/produtos/')
+        produtos.value = response.data
+    } catch (error) {
+        $q.notify({ color: 'negative', message: error.response?.data?.detail || 'Erro ao carregar produtos', icon: 'error' })
+    }
 }
 
 const fetchMovimentacoes = async () => {
     loading.value = true
     try {
-        // MOCK: Substitua por api.get('/api/movimentacoes/')
-        await new Promise(resolve => setTimeout(resolve, 600))
-        movimentacoes.value = [
-            {
-                id: 1,
-                produto: { id: 1, nome: 'Notebook Dell' },
-                tipo: 'entrada',
-                quantidade: 10,
-                observacao: 'Compra inicial',
-                criado_em: '2024-01-15T10:30:00Z'
-            },
-            {
-                id: 2,
-                produto: { id: 2, nome: 'Mouse Sem Fio' },
-                tipo: 'saida',
-                quantidade: 3,
-                observacao: 'Venda para cliente X',
-                criado_em: '2024-01-16T14:20:00Z'
-            },
-            {
-                id: 3,
-                produto: { id: 1, nome: 'Notebook Dell' },
-                tipo: 'saida',
-                quantidade: 2,
-                observacao: 'Venda para cliente Y',
-                criado_em: '2024-01-17T09:15:00Z'
-            },
-        ]
-    } catch {
-        $q.notify({ color: 'negative', message: 'Erro ao carregar movimentações', icon: 'error' })
+        const response = await api.get('/movimentacoes/')
+        movimentacoes.value = response.data
+    } catch (error) {
+        $q.notify({ color: 'negative', message: error.response?.data?.detail || 'Erro ao carregar movimentações', icon: 'error' })
     } finally {
         loading.value = false
-    }
-}
-
-const fetchProdutos = async () => {
-    try {
-        // MOCK: Substitua por api.get('/api/produtos/')
-        await new Promise(resolve => setTimeout(resolve, 300))
-        produtos.value = [
-            { id: 1, nome: 'Notebook Dell' },
-            { id: 2, nome: 'Mouse Sem Fio' },
-            { id: 3, nome: 'Teclado Mecânico' },
-        ]
-    } catch {
-        $q.notify({ color: 'negative', message: 'Erro ao carregar produtos', icon: 'error' })
     }
 }
 
@@ -261,7 +236,7 @@ const openDialog = (movimentacao = null) => {
         isEditing.value = true
         form.value = {
             id: movimentacao.id,
-            produto: movimentacao.produto?.id,
+            produto: movimentacao.produto, // Já é o ID vindo da API
             tipo: movimentacao.tipo,
             quantidade: movimentacao.quantidade,
             observacao: movimentacao.observacao || ''
@@ -276,53 +251,38 @@ const openDialog = (movimentacao = null) => {
 const saveMovimentacao = async () => {
     saving.value = true
     try {
-        // MOCK: Substitua por api.post() ou api.put()
-        await new Promise(resolve => setTimeout(resolve, 800))
-
-        const produtoSelecionado = produtos.value.find(p => p.id === form.value.produto)
-
         if (isEditing.value) {
-            const index = movimentacoes.value.findIndex(m => m.id === form.value.id)
-            if (index !== -1) {
-                movimentacoes.value[index] = {
-                    ...movimentacoes.value[index],
-                    produto: produtoSelecionado,
-                    tipo: form.value.tipo,
-                    quantidade: form.value.quantidade,
-                    observacao: form.value.observacao
-                }
-            }
+            await api.put(`/movimentacoes/${form.value.id}/`, form.value)
             $q.notify({ color: 'positive', message: 'Movimentação atualizada!', icon: 'check' })
         } else {
-            const newId = movimentacoes.value.length > 0 ? Math.max(...movimentacoes.value.map(m => m.id)) + 1 : 1
-            movimentacoes.value.push({
-                id: newId,
-                produto: produtoSelecionado,
-                tipo: form.value.tipo,
-                quantidade: form.value.quantidade,
-                observacao: form.value.observacao,
-                criado_em: new Date().toISOString()
-            })
+            await api.post('/movimentacoes/', form.value)
             $q.notify({ color: 'positive', message: 'Movimentação registrada!', icon: 'check' })
         }
         dialog.value = false
-    } catch {
-        $q.notify({ color: 'negative', message: 'Erro ao salvar movimentação', icon: 'error' })
+        fetchMovimentacoes() // Recarrega para garantir sincronia com o saldo do backend
+    } catch (error) {
+        $q.notify({ color: 'negative', message: error.response?.data?.detail || 'Erro ao salvar movimentação', icon: 'error' })
     } finally {
         saving.value = false
     }
 }
 
 const confirmDelete = (movimentacao) => {
+    const prodName = getProdutoNome(movimentacao.produto)
+
     $q.dialog({
         title: 'Confirmar exclusão',
-        message: `Deseja realmente excluir esta movimentação de ${movimentacao.tipo} do produto "${movimentacao.produto?.nome}"?`,
+        message: `Deseja realmente excluir esta movimentação de ${movimentacao.tipo} do produto "${prodName}"? Isso pode afetar o saldo de estoque.`,
         cancel: true,
         persistent: true
     }).onOk(async () => {
-        // MOCK: Substitua por api.delete(`/api/movimentacoes/${movimentacao.id}/`)
-        movimentacoes.value = movimentacoes.value.filter(m => m.id !== movimentacao.id)
-        $q.notify({ color: 'positive', message: 'Movimentação excluída', icon: 'delete' })
+        try {
+            await api.delete(`/movimentacoes/${movimentacao.id}/`)
+            $q.notify({ color: 'positive', message: 'Movimentação excluída', icon: 'delete' })
+            fetchMovimentacoes()
+        } catch (error) {
+            $q.notify({ color: 'negative', message: error.response?.data?.detail || 'Erro ao excluir movimentação', icon: 'error' })
+        }
     })
 }
 

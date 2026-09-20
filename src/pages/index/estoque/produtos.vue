@@ -1,6 +1,5 @@
 <template>
     <q-page class="q-pa-md">
-
         <!-- Breadcrumbs (Navegação estrutural) -->
         <q-breadcrumbs active-color="primary" separator-color="grey-4" class="q-mb-md">
             <q-breadcrumbs-el label="Início" icon="home" to="/" />
@@ -34,7 +33,7 @@
         <q-card bordered class="no-shadow">
             <q-table :rows="filteredProdutos" :columns="columns" row-key="id" :loading="loading"
                 :pagination="{ rowsPerPage: 10 }" flat>
-                <!-- Template para colunas personalizadas -->
+
                 <template v-slot:body-cell-preco="props">
                     <q-td :props="props" class="text-weight-medium">
                         R$ {{ formatCurrency(props.row.preco) }}
@@ -66,7 +65,6 @@
                         <q-btn flat round color="negative" icon="delete" size="sm" @click="confirmDelete(props.row)">
                             <q-tooltip>Excluir</q-tooltip>
                         </q-btn>
-                        <!-- Botão opcional para abrir modal de movimentação -->
                         <q-btn flat round color="secondary" icon="swap_horiz" size="sm"
                             @click="openMovimentacao(props.row)">
                             <q-tooltip>Movimentar</q-tooltip>
@@ -77,8 +75,8 @@
         </q-card>
 
         <!-- Diálogo de Cadastro/Edição -->
-        <q-dialog v-model="dialog" persistent maximized>
-            <q-card class="q-pa-md">
+        <q-dialog v-model="dialog" persistent>
+            <q-card class="q-pa-md" style="min-width: 400px; max-width: 600px">
                 <q-card-section class="row items-center q-pb-none">
                     <div class="text-h6">{{ isEditing ? 'Editar' : 'Novo' }} Produto</div>
                     <q-space />
@@ -118,7 +116,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
-// import api from 'src/boot/axios' // Descomente e ajuste conforme sua configuração de API
+import { api } from '@/boot/axios' // Importação nomeada conforme seu boot/axios.js
 
 const $q = useQuasar()
 
@@ -146,7 +144,7 @@ const columns = [
     { name: 'preco', label: 'Preço', field: 'preco', align: 'right', sortable: true },
     { name: 'saldo_estoque', label: 'Saldo', field: 'saldo_estoque', align: 'center', sortable: true },
     { name: 'ativo', label: 'Status', field: 'ativo', align: 'center', sortable: true },
-    { name: 'actions', label: 'Ações', field: 'actions', align: 'center' }
+    { name: 'actions', label: 'Ações', align: 'center' } // 'field' removido pois é coluna virtual
 ]
 
 // --- Computed ---
@@ -161,22 +159,22 @@ const filteredProdutos = computed(() => {
 
 // --- Métodos ---
 const formatCurrency = (value) => {
+    if (value === null || value === undefined) return '0,00'
     return parseFloat(value).toFixed(2).replace('.', ',')
 }
 
 const fetchProdutos = async () => {
     loading.value = true
     try {
-        // MOCK: Substitua pela chamada real à sua API Django (ex: api.get('/api/produtos/'))
-        // NOTA: Sua ViewSet/Serializer no Django deve annotar o 'saldo_estoque' para vir no JSON.
-        await new Promise(resolve => setTimeout(resolve, 600)) // Simula delay de rede
-        produtos.value = [
-            { id: 1, nome: 'Notebook Dell', descricao: 'i7, 16GB RAM', preco: 4500.00, ativo: true, saldo_estoque: 15 },
-            { id: 2, nome: 'Mouse Sem Fio', descricao: 'Logitech MX', preco: 250.50, ativo: true, saldo_estoque: 0 },
-            { id: 3, nome: 'Teclado Mecânico', descricao: 'Switch Red', preco: 380.00, ativo: false, saldo_estoque: 5 },
-        ]
-    } catch {
-        $q.notify({ color: 'negative', message: 'Erro ao carregar produtos', icon: 'error' })
+        const response = await api.get('/produtos/')
+        produtos.value = response.data
+    } catch (error) {
+        console.error('Erro ao carregar produtos:', error)
+        $q.notify({
+            color: 'negative',
+            message: error.response?.data?.detail || 'Erro ao carregar produtos',
+            icon: 'error'
+        })
     } finally {
         loading.value = false
     }
@@ -196,21 +194,26 @@ const openDialog = (produto = null) => {
 const saveProduto = async () => {
     saving.value = true
     try {
-        // MOCK: Substitua por api.post() ou api.put()
-        await new Promise(resolve => setTimeout(resolve, 800))
-
         if (isEditing.value) {
+            const response = await api.put(`/produtos/${form.value.id}/`, form.value)
             const index = produtos.value.findIndex(p => p.id === form.value.id)
-            if (index !== -1) produtos.value[index] = { ...form.value }
+            if (index !== -1) {
+                produtos.value[index] = response.data
+            }
             $q.notify({ color: 'positive', message: 'Produto atualizado com sucesso!', icon: 'check' })
         } else {
-            const newId = produtos.value.length > 0 ? Math.max(...produtos.value.map(p => p.id)) + 1 : 1
-            produtos.value.push({ ...form.value, id: newId, saldo_estoque: 0 })
+            const response = await api.post('/produtos/', form.value)
+            produtos.value.push(response.data)
             $q.notify({ color: 'positive', message: 'Produto cadastrado com sucesso!', icon: 'check' })
         }
         dialog.value = false
-    } catch {
-        $q.notify({ color: 'negative', message: 'Erro ao salvar produto', icon: 'error' })
+    } catch (error) {
+        console.error('Erro ao salvar produto:', error)
+        $q.notify({
+            color: 'negative',
+            message: error.response?.data?.detail || 'Erro ao salvar produto',
+            icon: 'error'
+        })
     } finally {
         saving.value = false
     }
@@ -223,14 +226,24 @@ const confirmDelete = (produto) => {
         cancel: true,
         persistent: true
     }).onOk(async () => {
-        // MOCK: Substitua por api.delete(`/api/produtos/${produto.id}/`)
-        produtos.value = produtos.value.filter(p => p.id !== produto.id)
-        $q.notify({ color: 'positive', message: 'Produto excluído', icon: 'delete' })
+        try {
+            await api.delete(`/produtos/${produto.id}/`)
+            produtos.value = produtos.value.filter(p => p.id !== produto.id)
+            $q.notify({ color: 'positive', message: 'Produto excluído com sucesso', icon: 'delete' })
+        } catch (error) {
+            console.error('Erro ao excluir produto:', error)
+            $q.notify({
+                color: 'negative',
+                message: error.response?.data?.detail || 'Erro ao excluir produto',
+                icon: 'error'
+            })
+        }
     })
 }
 
 const openMovimentacao = (produto) => {
-    // Lógica para abrir um segundo diálogo ou redirecionar para a tela de movimentações
+    // Exemplo de redirecionamento futuro:
+    // router.push({ name: 'movimentacoes', query: { produtoId: produto.id } })
     $q.notify({ message: `Abrir movimentação para: ${produto.nome}`, color: 'secondary', icon: 'swap_horiz' })
 }
 
@@ -239,7 +252,3 @@ onMounted(() => {
     fetchProdutos()
 })
 </script>
-
-<style scoped>
-/* Ajustes finos de layout se necessário */
-</style>
