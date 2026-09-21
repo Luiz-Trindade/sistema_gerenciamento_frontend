@@ -1,13 +1,15 @@
 <template>
     <q-page class="q-pa-sm q-pa-md-md">
+        <!-- isLoading: carregamento inicial, isFetching: carregamento em background (ex: ao mudar filtro) -->
         <q-inner-loading :showing="isLoading" color="primary" />
 
-        <div v-if="!error">
+        <div v-if="!isError">
             <!-- Cabeçalho -->
             <div class="row items-center q-mb-md">
                 <div class="text-h6 text-sm-h5 text-weight-bold">Visão Geral</div>
                 <q-space />
-                <q-btn flat round icon="refresh" color="primary" @click="fetchData" :loading="isLoading">
+                <!-- isFetching mostra o loading no botão durante refetchs em background -->
+                <q-btn flat round icon="refresh" color="primary" @click="refetch" :loading="isFetching">
                     <q-tooltip>Atualizar dados</q-tooltip>
                 </q-btn>
             </div>
@@ -23,8 +25,9 @@
                         emit-value map-options disable />
                 </div>
                 <div class="col-12 col-md-4 flex justify-end items-center">
-                    <q-btn color="primary" label="Aplicar" icon="filter_alt" class="full-width" @click="fetchData"
-                        :loading="isLoading" />
+                    <!-- Ao clicar, atualiza o activePeriod, o que dispara o vue-query automaticamente -->
+                    <q-btn color="primary" label="Aplicar" icon="filter_alt" class="full-width" @click="applyFilters"
+                        :loading="isFetching" />
                 </div>
             </div>
 
@@ -100,16 +103,16 @@
             <div class="text-center">
                 <q-icon name="error_outline" size="48px" color="negative" class="q-mb-md" />
                 <div class="text-h6 text-negative">Erro ao carregar dados</div>
-                <q-btn color="primary" label="Tentar novamente" class="q-mt-md" @click="fetchData" />
+                <q-btn color="primary" label="Tentar novamente" class="q-mt-md" @click="refetch" />
             </div>
         </div>
     </q-page>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useQuasar } from 'quasar'
-// CORREÇÃO 1: Importe a instância nomeada 'api' que já tem os interceptors configurados
+import { useQuery } from '@tanstack/vue-query' // <-- Import do Vue Query
 import { api } from '@/boot/axios'
 
 import LineChart from '@/components/LineChart.vue'
@@ -118,14 +121,10 @@ import DoughnutChart from '@/components/DoughnutChart.vue'
 
 const $q = useQuasar()
 
-// --- Estado ---
-const isLoading = ref(false)
-const error = ref(false)
-const apiData = ref(null)
-
 // --- Filtros ---
 const filterPeriod = ref('month')
 const filterCategory = ref('all')
+const activePeriod = ref('month') // Controla quando a query deve ser executada
 
 const periodOptions = [
     { label: 'Hoje', value: 'today' },
@@ -142,59 +141,45 @@ const categoryOptions = [
     { label: 'Acessórios', value: 'accessories' }
 ]
 
+const applyFilters = () => {
+    // Ao alterar esta ref, o vue-query detecta a mudança no queryKey e faz o fetch automaticamente
+    activePeriod.value = filterPeriod.value
+}
+
 // --- Lógica de Datas ---
 const getDateRange = (period) => {
     const end = new Date()
     const start = new Date()
 
     switch (period) {
-        case 'today':
-            break
-        case '7days':
-            start.setDate(end.getDate() - 7)
-            break
-        case 'month':
-            start.setDate(1)
-            break
-        case '30days':
-            start.setDate(end.getDate() - 30)
-            break
-        case 'year':
-            start.setMonth(0, 1)
-            break
+        case 'today': break
+        case '7days': start.setDate(end.getDate() - 7); break
+        case 'month': start.setDate(1); break
+        case '30days': start.setDate(end.getDate() - 30); break
+        case 'year': start.setMonth(0, 1); break
     }
 
     const fmt = (d) => d.toISOString().split('T')[0]
     return { start_date: fmt(start), end_date: fmt(end) }
 }
 
-// --- Fetch ---
-const fetchData = async () => {
-    isLoading.value = true
-    error.value = false
-
-    try {
-        const dates = getDateRange(filterPeriod.value)
-        // CORREÇÃO 2: Use 'api.get' em vez de 'axios.get'
+// --- Vue Query ---
+const {
+    data,
+    isLoading,
+    isFetching,
+    isError,
+    refetch
+} = useQuery({
+    // queryKey como função garante reatividade quando activePeriod muda
+    queryKey: () => ['dashboard', activePeriod.value],
+    queryFn: async () => {
+        const dates = getDateRange(activePeriod.value)
         const response = await api.get('/dashboards/principal/', { params: dates })
-        apiData.value = response.data
-    } catch (err) {
-        console.error('Erro ao buscar dados do dashboard:', err)
-        error.value = true
-        $q.notify({
-            message: 'Erro ao carregar dados do dashboard',
-            color: 'negative',
-            icon: 'error',
-            position: 'top'
-        })
-    } finally {
-        isLoading.value = false
-    }
-}
-
-// Carrega dados ao montar o componente
-onMounted(() => {
-    fetchData()
+        return response.data
+    },
+    // Opcional: manter dados antigos na tela enquanto carrega os novos (evita flicker)
+    placeholderData: (previousData) => previousData,
 })
 
 // --- Formatação ---
@@ -208,9 +193,9 @@ const formatNumber = (value) => {
     return new Intl.NumberFormat('pt-BR').format(Number(value))
 }
 
-// --- Mapeamento para o Template ---
+// --- Mapeamento para o Template (Agora usando `data.value` do vue-query) ---
 const mappedKpis = computed(() => {
-    const k = apiData.value?.kpis
+    const k = data.value?.kpis
     if (!k) return []
 
     return [
@@ -222,7 +207,7 @@ const mappedKpis = computed(() => {
 })
 
 const lineData = computed(() => {
-    const chart = apiData.value?.charts?.evolucao_vendas
+    const chart = data.value?.charts?.evolucao_vendas
     if (!chart) return { labels: [], datasets: [] }
     return {
         labels: chart.labels || [],
@@ -238,7 +223,7 @@ const lineData = computed(() => {
 })
 
 const barData1 = computed(() => {
-    const chart = apiData.value?.charts?.top_produtos
+    const chart = data.value?.charts?.top_produtos
     if (!chart) return { labels: [], datasets: [] }
     return {
         labels: chart.labels || [],
@@ -252,7 +237,7 @@ const barData1 = computed(() => {
 })
 
 const doughnutData = computed(() => {
-    const chart = apiData.value?.charts?.meios_pagamento
+    const chart = data.value?.charts?.meios_pagamento
     if (!chart) return { labels: [], datasets: [] }
     const colors = ['#4FC08D', '#1976D2', '#F2C037', '#E53935', '#9C27B0', '#607D8B']
     return {
@@ -267,7 +252,7 @@ const doughnutData = computed(() => {
 })
 
 const barData2 = computed(() => {
-    const chart = apiData.value?.charts?.pedidos_por_status
+    const chart = data.value?.charts?.pedidos_por_status
     if (!chart) return { labels: [], datasets: [] }
     const colors = {
         'Concluído': '#4FC08D',
