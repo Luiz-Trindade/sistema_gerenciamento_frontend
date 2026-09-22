@@ -170,22 +170,18 @@ export default defineConfig((/* ctx */) => {
 
         // https://v2.quasar.dev/quasar-cli-vite/developing-pwa/configuring-pwa
         pwa: {
-            workboxMode: 'GenerateSW', // 'GenerateSW' or 'InjectManifest'
-            // swFilename: 'sw.js',
-            // manifestFilename: 'manifest.json',
+            workboxMode: 'GenerateSW',
+            // Garante que o Quasar injete as meta tags corretas no index.html
+            injectPWAMetaTags: true,
+
+            // Estende o manifest.json com as cores do sistema
             extendPWAManifestJson(json) {
                 return {
                     ...json,
-                    theme_color: '#1976d2',
+                    theme_color: '#1976d2', // Cor da barra de status no Android (PWA instalado)
                     background_color: '#ffffff',
                 }
             },
-            // useCredentialsForManifestTag: true,
-            // injectPWAMetaTags: false,
-            // extendPWACustomSWConf (rolldownConf) {},
-            // extendPWAGenerateSWOptions (cfg) {},
-            // extendPWAInjectManifestOptions (cfg) {},
-            // extendPWASwTsConfig (tsConfig) {}
         },
 
         // https://v2.quasar.dev/quasar-cli-vite/developing-cordova-apps/configuring-cordova
