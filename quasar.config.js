@@ -182,6 +182,16 @@ export default defineConfig((/* ctx */) => {
                     background_color: '#ffffff',
                 }
             },
+
+            manifest: {
+                name: 'Simples Gestão', // Nome completo exibido na instalação
+                short_name: 'Simples Gestão', // Nome curto para a tela inicial
+                description: 'Sistema de gestão de estoque e vendas',
+                display: 'standalone',
+                orientation: 'portrait',
+                background_color: '#ffffff',
+                theme_color: '#1976d2',
+            },
         },
 
         // https://v2.quasar.dev/quasar-cli-vite/developing-cordova-apps/configuring-cordova

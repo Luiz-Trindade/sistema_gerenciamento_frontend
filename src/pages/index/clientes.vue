@@ -56,17 +56,18 @@
                                         </q-card-section>
                                         <q-separator class="q-my-sm" />
                                         <q-card-section class="q-pt-none q-pb-sm">
+                                            <!-- Popover: limite maior (400) e quebra de linha preservada -->
                                             <div class="text-body2" style="white-space: pre-wrap;">
-                                                {{ props.row.descricao }}
+                                                {{ truncar(props.row.descricao, LIMITE_DESCRICAO_POPOVER) }}
                                             </div>
                                         </q-card-section>
                                     </q-card>
                                 </q-menu>
                             </q-btn>
                         </div>
-                        <div v-if="props.row.descricao" class="text-caption text-grey-7 ellipsis q-mt-xs"
-                            :style="{ maxWidth: '260px' }">
-                            {{ props.row.descricao }}
+                        <!-- Trecho da tabela: limite curto (80) com reticências -->
+                        <div v-if="props.row.descricao" class="text-caption text-grey-7 q-mt-xs">
+                            {{ truncar(props.row.descricao, LIMITE_DESCRICAO_TABELA) }}
                         </div>
                     </q-td>
                 </template>
@@ -156,8 +157,8 @@
                         </div>
 
                         <q-input v-model="form.descricao" label="Descrição" type="textarea" outlined dense rows="3"
-                            autogrow :disable="saving"
-                            hint="Informações adicionais sobre o cliente (visível na listagem)." />
+                            autogrow :disable="saving" :maxlength="LIMITE_DESCRICAO_INPUT"
+                            :hint="`Informações adicionais (${form.descricao?.length || 0}/${LIMITE_DESCRICAO_INPUT} caracteres).`" />
 
                         <div class="row items-center q-mt-sm">
                             <q-toggle v-model="form.ativo" label="Cliente Ativo" color="positive" :disable="saving" />
@@ -220,6 +221,29 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 
 const $q = useQuasar()
 const queryClient = useQueryClient()
+
+// ==========================================
+// LIMITES DE CARACTERES
+// ==========================================
+const LIMITE_DESCRICAO_TABELA = 30      // trecho exibido abaixo do nome
+const LIMITE_DESCRICAO_POPOVER = 500    // texto exibido no popover
+const LIMITE_DESCRICAO_INPUT = 1500     // máximo aceito no campo (alinhado ao backend, se houver)
+
+/**
+ * Trunca um texto em `limite` caracteres, adicionando "…" no final
+ * se houver corte. Preserva palavras inteiras quando possível.
+ */
+const truncar = (texto, limite) => {
+    if (!texto) return ''
+    const str = String(texto).trim()
+    if (str.length <= limite) return str
+
+    // Corta no último espaço antes do limite para não quebrar palavra no meio
+    const cortado = str.slice(0, limite)
+    const ultimoEspaco = cortado.lastIndexOf(' ')
+    const base = ultimoEspaco > limite * 0.6 ? cortado.slice(0, ultimoEspaco) : cortado
+    return base.trimEnd() + '…'
+}
 
 // --- Estado Local (Apenas para controle de UI) ---
 const filter = ref('')
