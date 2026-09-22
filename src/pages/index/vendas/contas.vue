@@ -436,14 +436,6 @@ const deletarConta = async (id) => {
     width: 100%;
 }
 
-.conta-dialog-card {
-    max-width: 700px;
-    width: 100%;
-    margin: auto;
-    max-height: 90vh;
-    overflow-y: auto;
-}
-
 @media (max-width: 599px) {
     .page-header {
         align-items: stretch;

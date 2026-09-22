@@ -46,7 +46,7 @@
 
                 <template v-slot:body-cell-produto_nome="props">
                     <q-td :props="props">
-                        {{ getProdutoNome(props.row.produto) }}
+                        {{ props.row.produto?.nome || '-' }}
                     </q-td>
                 </template>
 
@@ -136,6 +136,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 const $q = useQuasar()
 const queryClient = useQueryClient()
 
+// --- Colunas da Tabela ---
+const columns = [
+    { name: 'produto_nome', label: 'Produto', field: 'produto', align: 'left', sortable: true },
+    { name: 'tipo', label: 'Tipo', field: 'tipo', align: 'center', sortable: true },
+    { name: 'quantidade', label: 'Qtd.', field: 'quantidade', align: 'center', sortable: true },
+    { name: 'observacao', label: 'Observação', field: 'observacao', align: 'left', sortable: false },
+    { name: 'criado_em', label: 'Data', field: 'criado_em', align: 'left', sortable: true },
+    { name: 'actions', label: 'Ações', field: 'actions', align: 'center', sortable: false }
+]
+
 // --- Estado Local (Apenas para controle de UI) ---
 const search = ref('')
 const filterTipo = ref(null)
@@ -195,7 +205,7 @@ const filteredMovimentacoes = computed(() => {
     if (search.value) {
         const term = search.value.toLowerCase()
         result = result.filter(m => {
-            const prodName = getProdutoNome(m.produto).toLowerCase()
+            const prodName = (m.produto?.nome || '').toLowerCase()
             return prodName.includes(term) || (m.observacao && m.observacao.toLowerCase().includes(term))
         })
     }
@@ -205,18 +215,14 @@ const filteredMovimentacoes = computed(() => {
     }
 
     if (filterProduto.value) {
-        result = result.filter(m => m.produto === filterProduto.value)
+        // Compara com o ID dentro do objeto aninhado
+        result = result.filter(m => m.produto?.id === filterProduto.value)
     }
 
     return result
 })
 
 // --- Métodos Auxiliares ---
-const getProdutoNome = (produtoId) => {
-    const prod = (produtos.value || []).find(p => p.id === produtoId)
-    return prod ? prod.nome : `Produto ID: ${produtoId}`
-}
-
 const formatDate = (dateString) => {
     if (!dateString) return '-'
     return new Date(dateString).toLocaleString('pt-BR', {
@@ -229,7 +235,8 @@ const openDialog = (movimentacao = null) => {
         isEditing.value = true
         form.value = {
             id: movimentacao.id,
-            produto: movimentacao.produto,
+            // extrai o ID do produto aninhado (fallback caso venha como número)
+            produto: movimentacao.produto?.id ?? movimentacao.produto,
             tipo: movimentacao.tipo,
             quantidade: movimentacao.quantidade,
             observacao: movimentacao.observacao || ''
@@ -292,7 +299,7 @@ const { mutateAsync: deleteMovimentacaoMutation } = useMutation({
 })
 
 const confirmDelete = (movimentacao) => {
-    const prodName = getProdutoNome(movimentacao.produto)
+    const prodName = movimentacao.produto?.nome || `ID ${movimentacao.produto}`
 
     $q.dialog({
         title: 'Confirmar exclusão',

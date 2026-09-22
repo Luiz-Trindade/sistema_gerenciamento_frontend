@@ -17,7 +17,7 @@
         <!-- Barra de Ferramentas (Busca) -->
         <q-card class="q-mb-md no-shadow" bordered>
             <q-card-section class="row items-center q-py-sm">
-                <q-input v-model="filter" dense outlined placeholder="Buscar por nome, CPF/CNPJ ou e-mail..."
+                <q-input v-model="filter" dense outlined placeholder="Buscar por nome, CPF/CNPJ, e-mail ou telefone..."
                     class="col-12 col-sm-8 col-md-6">
                     <template v-slot:prepend>
                         <q-icon name="search" />
@@ -33,6 +33,14 @@
         <q-card bordered class="no-shadow">
             <q-table :rows="filteredClientes" :columns="columns" row-key="id" :loading="loading" dense flat
                 separator="horizontal" :pagination="{ rowsPerPage: 10 }" class="responsive-table">
+
+                <template v-slot:body-cell-documento="props">
+                    <q-td :props="props">
+                        <div v-if="props.row.cpf">CPF: {{ props.row.cpf }}</div>
+                        <div v-if="props.row.cnpj">CNPJ: {{ props.row.cnpj }}</div>
+                        <span v-if="!props.row.cpf && !props.row.cnpj" class="text-grey-6">-</span>
+                    </q-td>
+                </template>
 
                 <template v-slot:body-cell-contato="props">
                     <q-td :props="props">
@@ -88,8 +96,20 @@
 
                         <div class="row q-col-gutter-md">
                             <div class="col-12 col-sm-6">
-                                <q-input v-model="form.documento" label="CPF / CNPJ *" outlined dense
-                                    :rules="[val => !!val || 'Documento é obrigatório']" />
+                                <q-input v-model="form.cpf" label="CPF" outlined dense mask="###.###.###-##"
+                                    unmasked-value />
+                            </div>
+                            <div class="col-12 col-sm-6">
+                                <q-input v-model="form.cnpj" label="CNPJ" outlined dense mask="##.###.###/####-##"
+                                    unmasked-value />
+                            </div>
+                        </div>
+
+                        <div class="row q-col-gutter-md">
+                            <div class="col-12 col-sm-6">
+                                <q-input v-model="form.email" label="E-mail" type="email" outlined dense :rules="[
+                                    val => !val || /.+@.+\..+/.test(val) || 'E-mail inválido'
+                                ]" />
                             </div>
                             <div class="col-12 col-sm-6">
                                 <q-input v-model="form.telefone" label="Telefone / Celular" outlined dense
@@ -97,10 +117,8 @@
                             </div>
                         </div>
 
-                        <q-input v-model="form.email" label="E-mail *" type="email" outlined dense :rules="[
-                            val => !!val || 'E-mail é obrigatório',
-                            val => /.+@.+\..+/.test(val) || 'E-mail inválido'
-                        ]" />
+                        <q-input v-model="form.descricao" label="Descrição" type="textarea" outlined dense rows="3"
+                            autogrow />
 
                         <div class="row items-center q-mt-sm">
                             <q-toggle v-model="form.ativo" label="Cliente Ativo" color="positive" />
@@ -131,7 +149,7 @@
                         Tem certeza que deseja excluir o cliente <strong>{{ clienteParaExcluir?.nome }}</strong>?
                     </div>
                     <div class="text-caption text-grey-7 q-mt-sm">
-                        Esta ação não pode ser desfeita e pode impactos em pedidos ou contas vinculadas.
+                        Esta ação não pode ser desfeita e pode impactar pedidos ou contas vinculadas.
                     </div>
                 </q-card-section>
 
@@ -163,9 +181,11 @@ const clienteParaExcluir = ref(null)
 const defaultForm = {
     id: null,
     nome: '',
-    documento: '',
     email: '',
     telefone: '',
+    descricao: '',
+    cpf: '',
+    cnpj: '',
     ativo: true
 }
 const form = ref({ ...defaultForm })
@@ -173,7 +193,7 @@ const form = ref({ ...defaultForm })
 // --- Colunas da Tabela ---
 const columns = [
     { name: 'nome', label: 'Nome / Razão Social', field: 'nome', align: 'left', sortable: true },
-    { name: 'documento', label: 'CPF / CNPJ', field: 'documento', align: 'left', sortable: true },
+    { name: 'documento', label: 'CPF / CNPJ', field: 'cpf', align: 'left', sortable: false },
     { name: 'contato', label: 'Contato', field: 'email', align: 'left' },
     { name: 'status', label: 'Status', field: 'ativo', align: 'center', sortable: true },
     { name: 'acoes', label: 'Ações', align: 'center' }
@@ -182,10 +202,9 @@ const columns = [
 // ==========================================
 // 1. VUE QUERY: LEITURA (GET)
 // ==========================================
-// Substitui o `const clientes = ref([])`, `loading` e o `onMounted` + `fetchClientes`
 const {
     data: clientes,
-    isLoading: loading // Renomeado para manter compatibilidade com seu template (:loading="loading")
+    isLoading: loading
 } = useQuery({
     queryKey: ['clientes'],
     queryFn: async () => {
@@ -196,16 +215,16 @@ const {
 
 // --- Computed (Filtro) ---
 const filteredClientes = computed(() => {
-    // Fallback para [] caso os dados ainda estejam carregando (undefined)
     const lista = clientes.value || []
-
     if (!filter.value) return lista
 
     const term = filter.value.toLowerCase()
     return lista.filter(c =>
         c.nome?.toLowerCase().includes(term) ||
-        c.documento?.toLowerCase().includes(term) ||
-        c.email?.toLowerCase().includes(term)
+        c.email?.toLowerCase().includes(term) ||
+        c.cpf?.toLowerCase().includes(term) ||
+        c.cnpj?.toLowerCase().includes(term) ||
+        c.telefone?.toLowerCase().includes(term)
     )
 })
 
@@ -213,7 +232,16 @@ const filteredClientes = computed(() => {
 const openDialog = (cliente = null) => {
     if (cliente) {
         isEditing.value = true
-        form.value = { ...cliente }
+        form.value = {
+            id: cliente.id,
+            nome: cliente.nome ?? '',
+            email: cliente.email ?? '',
+            telefone: cliente.telefone ?? '',
+            descricao: cliente.descricao ?? '',
+            cpf: cliente.cpf ?? '',
+            cnpj: cliente.cnpj ?? '',
+            ativo: cliente.ativo ?? true
+        }
     } else {
         isEditing.value = false
         form.value = { ...defaultForm }
@@ -231,16 +259,25 @@ const confirmarExclusao = (cliente) => {
 // ==========================================
 const { mutateAsync: saveClienteMutation, isPending: saving } = useMutation({
     mutationFn: async ({ formData, isEditing }) => {
+        // Normaliza campos opcionais vazios para null (evita colisão de UNIQUE)
+        const payload = {
+            ...formData,
+            email: formData.email || null,
+            cpf: formData.cpf || null,
+            cnpj: formData.cnpj || null,
+            telefone: formData.telefone || null,
+            descricao: formData.descricao || null
+        }
+
         if (isEditing) {
-            const response = await api.put(`/clientes/${formData.id}/`, formData)
+            const response = await api.put(`/clientes/${payload.id}/`, payload)
             return response.data
         } else {
-            const response = await api.post('/clientes/', formData)
+            const response = await api.post('/clientes/', payload)
             return response.data
         }
     },
     onSuccess: () => {
-        // Invalida o cache. A tabela será atualizada automaticamente em background.
         queryClient.invalidateQueries({ queryKey: ['clientes'] })
     }
 })
@@ -313,18 +350,8 @@ const deletarCliente = async () => {
     width: 100%;
 }
 
-/* Garante que o texto nas células quebre linha se necessário */
 :deep(.q-td) {
     white-space: normal;
-}
-
-/* Estilização para o Dialog Maximized ficar elegante e centralizado */
-.cliente-dialog-card {
-    max-width: 600px;
-    width: 100%;
-    margin: auto;
-    max-height: 90vh;
-    overflow-y: auto;
 }
 
 @media (max-width: 599px) {

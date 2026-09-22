@@ -114,7 +114,7 @@
                                 <q-item v-for="(item, index) in form.itens" :key="index">
                                     <q-item-section>
                                         <q-item-label class="text-weight-medium">{{ getProdutoNome(item.produto_id)
-                                        }}</q-item-label>
+                                            }}</q-item-label>
                                         <q-item-label caption>
                                             Qtd: {{ item.quantidade }} x R$ {{
                                                 formatCurrency(getProdutoPreco(item.produto_id))
@@ -390,13 +390,6 @@ const gerenciarItens = (pedido) => {
 
 .responsive-table {
     width: 100%;
-}
-
-.pedido-dialog-card {
-    width: min(700px, calc(100vw - 24px));
-    min-width: 0;
-    max-height: 90vh;
-    overflow-y: auto;
 }
 
 @media (max-width: 599px) {

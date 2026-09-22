@@ -295,13 +295,6 @@ const openMovimentacao = (produto) => {
     gap: 8px;
 }
 
-.produto-dialog-card {
-    width: min(600px, calc(100vw - 24px));
-    min-width: 0;
-    max-height: 90vh;
-    overflow-y: auto;
-}
-
 @media (max-width: 599px) {
     .produtos-page {
         padding: 8px;
