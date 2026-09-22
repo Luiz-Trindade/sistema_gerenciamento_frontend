@@ -171,21 +171,10 @@ export default defineConfig((/* ctx */) => {
         // https://v2.quasar.dev/quasar-cli-vite/developing-pwa/configuring-pwa
         pwa: {
             workboxMode: 'GenerateSW',
-            // Garante que o Quasar injete as meta tags corretas no index.html
             injectPWAMetaTags: true,
-
-            // Estende o manifest.json com as cores do sistema
-            extendPWAManifestJson(json) {
-                return {
-                    ...json,
-                    theme_color: '#1976d2', // Cor da barra de status no Android (PWA instalado)
-                    background_color: '#ffffff',
-                }
-            },
-
             manifest: {
-                name: 'Simples Gestão', // Nome completo exibido na instalação
-                short_name: 'Simples Gestão', // Nome curto para a tela inicial
+                name: 'Simples Gestão',
+                short_name: 'Simples Gestão',
                 description: 'Sistema de gestão de estoque e vendas',
                 display: 'standalone',
                 orientation: 'portrait',
