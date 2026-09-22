@@ -1,52 +1,52 @@
 {
-  "name": "sistema-gerenciamento-frontend",
-  "version": "0.0.1",
-  "description": "A Quasar Project",
-  "productName": "Gestão Simples",
-  "author": "Luiz-Trindade <luiz.gabriel.m.trindade@gmail.com>",
-  "type": "module",
-  "private": true,
-  "scripts": {
-    "lint": "prettier --write \"**/*.{js,vue,css,scss,html,md,json}\" --ignore-path .gitignore && eslint --fix -c ./eslint.config.js \"./src*/**/*.{js,cjs,mjs,vue}\"",
-    "lint:check": "prettier \"**/*.{js,vue,css,scss,html,md,json}\" --ignore-path .gitignore && eslint -c ./eslint.config.js \"./src*/**/*.{js,cjs,mjs,vue}\"",
-    "dev": "quasar dev",
-    "build": "quasar build -m pwa",
-    "postinstall": "quasar prepare --silent"
-  },
-  "dependencies": {
-    "@quasar/extras": "^2.0.4",
-    "@tanstack/vue-query": "^5.103.1",
-    "axios": "^1.20.0",
-    "chart.js": "^4.5.1",
-    "pinia": "^4.0.2",
-    "quasar": "^2.32.2",
-    "vue": "^3.5.22",
-    "vue-chartjs": "^5.3.4",
-    "vue-router": "^5.0.6"
-  },
-  "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "eslint": "^10.8.0",
-    "eslint-plugin-vue": "^10.8.0",
-    "globals": "^17.4.0",
-    "vite-plugin-checker": "^0.14.5",
-    "vue-eslint-parser": "^10.4.0",
-    "@vue/eslint-config-prettier": "^10.2.0",
-    "prettier": "^3.8.1",
-    "@quasar/app-vite": "^3.8.3",
-    "autoprefixer": "^10.4.27",
-    "postcss": "^8.5.8"
-  },
-  "keywords": [
-    "quasar",
-    "quasar-app",
-    "quasar-cli",
-    "quasar-app-vite",
-    "vite",
-    "vue",
-    "vuejs"
-  ],
-  "engines": {
-    "node": ">= 26 || ^24 || ^22.12"
-  }
+    "name": "sistema-gerenciamento-frontend",
+    "version": "0.0.1",
+    "description": "A Quasar Project",
+    "productName": "Simples Gestão",
+    "author": "Luiz-Trindade <luiz.gabriel.m.trindade@gmail.com>",
+    "type": "module",
+    "private": true,
+    "scripts": {
+        "lint": "prettier --write \"**/*.{js,vue,css,scss,html,md,json}\" --ignore-path .gitignore && eslint --fix -c ./eslint.config.js \"./src*/**/*.{js,cjs,mjs,vue}\"",
+        "lint:check": "prettier \"**/*.{js,vue,css,scss,html,md,json}\" --ignore-path .gitignore && eslint -c ./eslint.config.js \"./src*/**/*.{js,cjs,mjs,vue}\"",
+        "dev": "quasar dev",
+        "build": "quasar build -m pwa",
+        "postinstall": "quasar prepare --silent"
+    },
+    "dependencies": {
+        "@quasar/extras": "^2.0.4",
+        "@tanstack/vue-query": "^5.103.1",
+        "axios": "^1.20.0",
+        "chart.js": "^4.5.1",
+        "pinia": "^4.0.2",
+        "quasar": "^2.32.2",
+        "vue": "^3.5.22",
+        "vue-chartjs": "^5.3.4",
+        "vue-router": "^5.0.6"
+    },
+    "devDependencies": {
+        "@eslint/js": "^10.0.1",
+        "eslint": "^10.8.0",
+        "eslint-plugin-vue": "^10.8.0",
+        "globals": "^17.4.0",
+        "vite-plugin-checker": "^0.14.5",
+        "vue-eslint-parser": "^10.4.0",
+        "@vue/eslint-config-prettier": "^10.2.0",
+        "prettier": "^3.8.1",
+        "@quasar/app-vite": "^3.8.3",
+        "autoprefixer": "^10.4.27",
+        "postcss": "^8.5.8"
+    },
+    "keywords": [
+        "quasar",
+        "quasar-app",
+        "quasar-cli",
+        "quasar-app-vite",
+        "vite",
+        "vue",
+        "vuejs"
+    ],
+    "engines": {
+        "node": ">= 26 || ^24 || ^22.12"
+    }
 }

@@ -99,7 +99,7 @@ export default defineConfig((/* ctx */) => {
             injectPWAMetaTags: true,
             extendPWAManifestJson(json) {
                 json.name = 'Simples Gestão'
-                json.short_name = 'Simples'
+                json.short_name = 'Simples Gestão'
                 json.description = 'Sistema de gestão de estoque e vendas'
                 json.display = 'standalone'
                 json.orientation = 'any'
