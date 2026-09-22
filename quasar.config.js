@@ -94,7 +94,7 @@ export default defineConfig((/* ctx */) => {
             // directives: [],
 
             // Quasar plugins
-            plugins: ['Dark', 'Dialog', 'Notify', 'Loading'],
+            plugins: ['Dark', 'Dialog', 'Notify', 'Loading', 'AddressbarColor'],
         },
 
         // animations: 'all', // --- includes all animations
@@ -171,7 +171,13 @@ export default defineConfig((/* ctx */) => {
             workboxMode: 'GenerateSW', // 'GenerateSW' or 'InjectManifest'
             // swFilename: 'sw.js',
             // manifestFilename: 'manifest.json',
-            // extendPWAManifestJson (json) {},
+            extendPWAManifestJson(json) {
+                return {
+                    ...json,
+                    theme_color: '#1976d2',
+                    background_color: '#ffffff',
+                }
+            },
             // useCredentialsForManifestTag: true,
             // injectPWAMetaTags: false,
             // extendPWACustomSWConf (rolldownConf) {},
