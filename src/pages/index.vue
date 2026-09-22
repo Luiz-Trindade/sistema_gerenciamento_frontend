@@ -1,7 +1,7 @@
 <template>
     <q-layout view="hHh LpR fFf">
 
-        <!-- ================= HEADER SUPERIOR (Design Novo) ================= -->
+        <!-- ================= HEADER SUPERIOR ================= -->
         <q-header v-if="route.path !== '/login'" bordered class="bg-primary text-white shadow-2">
             <q-toolbar class="q-pl-sm q-pr-md">
                 <q-btn flat dense round icon="menu" aria-label="Alternar menu" @click="toggleDrawer"
@@ -20,20 +20,22 @@
                 </q-btn>
 
                 <q-btn flat round>
-                    <q-avatar size="32px">
-                        <img src="https://cdn.quasar.dev/img/boy-avatar.png" alt="User">
+                    <q-avatar size="32px" color="white" text-color="primary">
+                        <span class="text-weight-bold">{{ userIniciais }}</span>
                     </q-avatar>
-                    <q-tooltip>Minha Conta</q-tooltip>
+                    <q-tooltip>{{ userNomeCompleto }}</q-tooltip>
                     <q-menu anchor="bottom right" self="top right" class="shadow-2">
-                        <q-list style="min-width: 180px">
-                            <q-item-label header class="text-grey-8">Olá, Usuário</q-item-label>
+                        <q-list style="min-width: 220px">
+                            <q-item-label header class="text-grey-8">
+                                <div class="text-weight-medium">{{ userNomeCompleto }}</div>
+                                <div class="text-caption text-grey-7">{{ userEmail }}</div>
+                            </q-item-label>
                             <q-separator />
                             <q-item clickable v-ripple v-close-popup to="/config">
                                 <q-item-section avatar><q-icon name="settings" color="primary" /></q-item-section>
                                 <q-item-section>Configurações</q-item-section>
                             </q-item>
                             <q-separator />
-                            <!-- ALTERAÇÃO AQUI: Chama abrirModalLogout em vez de logout direto -->
                             <q-item clickable v-ripple v-close-popup @click="abrirModalLogout" class="text-negative">
                                 <q-item-section avatar><q-icon name="logout" /></q-item-section>
                                 <q-item-section>Sair do Sistema</q-item-section>
@@ -44,7 +46,7 @@
             </q-toolbar>
         </q-header>
 
-        <!-- ================= DRAWER LATERAL (Design Novo) ================= -->
+        <!-- ================= DRAWER LATERAL ================= -->
         <q-drawer v-if="route.path !== '/login'" v-model="leftDrawerOpen" show-if-above :width="260" :breakpoint="1024"
             bordered class="bg-dark text-white">
 
@@ -111,17 +113,22 @@
                     </q-list>
                 </q-scroll-area>
 
+                <!-- Card do usuário real -->
                 <div class="q-pa-sm">
                     <q-separator dark class="q-mb-sm" />
-                    <q-item clickable v-ripple to="/config" class="rounded-borders hover:bg-grey-9 text-white">
+                    <q-item clickable v-ripple to="/config" class="rounded-borders text-white">
                         <q-item-section avatar>
-                            <q-avatar size="36px">
-                                <img src="https://cdn.quasar.dev/img/boy-avatar.png" alt="User">
+                            <q-avatar size="36px" color="primary" text-color="white">
+                                <span class="text-weight-bold">{{ userIniciais }}</span>
                             </q-avatar>
                         </q-item-section>
                         <q-item-section>
-                            <q-item-label class="text-weight-bold text-body2">Administrador</q-item-label>
-                            <q-item-label caption class="text-grey-5">admin@simples.com</q-item-label>
+                            <q-item-label class="text-weight-bold text-body2 ellipsis">
+                                {{ userNomeCompleto }}
+                            </q-item-label>
+                            <q-item-label caption class="text-grey-5 ellipsis">
+                                {{ userEmail }}
+                            </q-item-label>
                         </q-item-section>
                         <q-item-section side>
                             <q-icon name="chevron_right" color="grey-5" />
@@ -172,7 +179,6 @@
 
                 <q-card-actions align="right" class="q-pb-md q-pr-md">
                     <q-btn flat label="Cancelar" color="grey-7" v-close-popup class="q-mr-sm" />
-                    <!-- ALTERAÇÃO AQUI: Chama a função logout e fecha o popup -->
                     <q-btn flat label="Sair" color="negative" unelevated @click="logout" v-close-popup />
                 </q-card-actions>
             </q-card>
@@ -182,9 +188,11 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
+import { api } from '@/boot/axios'
+import { useQuery } from '@tanstack/vue-query'
 
 const $q = useQuasar()
 const route = useRoute()
@@ -192,6 +200,41 @@ const router = useRouter()
 
 // --- ESTADO DO MODAL ---
 const confirmLogoutDialog = ref(false)
+
+// ==========================================
+// DADOS DO USUÁRIO (mesma chave do MeUsuario → cache compartilhado)
+// ==========================================
+const { data: userData } = useQuery({
+    queryKey: ['usuario-me'],
+    queryFn: async () => {
+        const response = await api.get('/usuarios/me/')
+        return response.data
+    },
+    staleTime: 1000 * 60 * 10,
+    // Não dispara a query na tela de login (usuário deslogado)
+    enabled: computed(() => route.path !== '/login')
+})
+
+const userNomeCompleto = computed(() => {
+    const u = userData.value
+    if (!u) return 'Carregando...'
+    const nome = [u.first_name, u.last_name].filter(Boolean).join(' ').trim()
+    return nome || u.username || u.email || 'Usuário'
+})
+
+const userEmail = computed(() => userData.value?.email || '')
+
+const userIniciais = computed(() => {
+    const u = userData.value
+    if (!u) return 'U'
+    const first = (u.first_name || '').trim()
+    const last = (u.last_name || '').trim()
+    const letras = (first[0] || '') + (last[0] || '')
+    if (letras) return letras.toUpperCase()
+    // Fallback: iniciais do username ou email
+    const base = u.username || u.email || ''
+    return base.slice(0, 2).toUpperCase() || 'U'
+})
 
 // --- TEMA ---
 const toggleTheme = () => {
@@ -260,13 +303,10 @@ watch(
 )
 
 // --- AÇÕES ---
-
-// 1. Função para abrir o modal
 const abrirModalLogout = () => {
     confirmLogoutDialog.value = true
 }
 
-// 2. Função que executa o logout de fato
 const logout = () => {
     confirmLogoutDialog.value = false
     localStorage.removeItem('token')

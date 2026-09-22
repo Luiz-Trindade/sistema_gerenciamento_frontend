@@ -7,11 +7,14 @@
         </q-breadcrumbs>
 
         <!-- Cabeçalho da Página -->
-        <div class="row items-center q-mb-md page-header">
-            <div class="text-h5 text-weight-bold">Clientes</div>
-            <q-space />
-            <q-btn color="primary" icon="add" label="Novo Cliente" @click="openDialog()"
-                class="q-ml-sm new-order-btn" />
+        <div class="row items-center q-mb-md q-col-gutter-sm">
+            <div class="col-12 col-sm">
+                <div class="text-h5 text-weight-bold">Clientes</div>
+            </div>
+            <div class="col-12 col-sm-auto">
+                <q-btn color="primary" icon="add" label="Novo Cliente" no-caps @click="openDialog()"
+                    :class="$q.screen.lt.sm ? 'full-width' : ''" />
+            </div>
         </div>
 
         <!-- Barra de Ferramentas (Busca) -->
@@ -32,7 +35,41 @@
         <!-- Tabela de Clientes -->
         <q-card bordered class="no-shadow">
             <q-table :rows="filteredClientes" :columns="columns" row-key="id" :loading="loading" dense flat
-                separator="horizontal" :pagination="{ rowsPerPage: 10 }" class="responsive-table">
+                separator="horizontal" :pagination="{ rowsPerPage: 10 }" class="full-width">
+
+                <!-- Coluna: Nome + trecho da descrição + ícone de info -->
+                <template v-slot:body-cell-nome="props">
+                    <q-td :props="props">
+                        <div class="row items-center no-wrap">
+                            <div class="ellipsis" :style="{ maxWidth: '240px' }">
+                                <span class="text-weight-medium">{{ props.row.nome }}</span>
+                            </div>
+                            <q-btn v-if="props.row.descricao" flat round dense size="sm" color="primary" icon="info"
+                                class="q-ml-xs">
+                                <q-tooltip>Ver descrição</q-tooltip>
+                                <q-menu anchor="bottom left" self="top left" :offset="[0, 4]"
+                                    class="cliente-descricao-menu">
+                                    <q-card flat style="max-width: 360px;">
+                                        <q-card-section class="row items-center q-pb-none q-pt-sm">
+                                            <q-icon name="description" color="primary" size="20px" class="q-mr-xs" />
+                                            <div class="text-subtitle2 text-weight-bold">Descrição</div>
+                                        </q-card-section>
+                                        <q-separator class="q-my-sm" />
+                                        <q-card-section class="q-pt-none q-pb-sm">
+                                            <div class="text-body2" style="white-space: pre-wrap;">
+                                                {{ props.row.descricao }}
+                                            </div>
+                                        </q-card-section>
+                                    </q-card>
+                                </q-menu>
+                            </q-btn>
+                        </div>
+                        <div v-if="props.row.descricao" class="text-caption text-grey-7 ellipsis q-mt-xs"
+                            :style="{ maxWidth: '260px' }">
+                            {{ props.row.descricao }}
+                        </div>
+                    </q-td>
+                </template>
 
                 <template v-slot:body-cell-documento="props">
                     <q-td :props="props">
@@ -81,27 +118,28 @@
         </q-card>
 
         <!-- Diálogo de Cadastro/Edição -->
-        <q-dialog v-model="dialog" persistent maximized>
-            <q-card class="q-pa-sm q-pa-md-sm cliente-dialog-card">
+        <q-dialog v-model="dialog" persistent :maximized="$q.screen.lt.sm">
+            <q-card class="column no-wrap" :style="$q.screen.lt.sm ? '' : 'width: 600px; max-width: 90vw;'">
                 <q-card-section class="row items-center q-pb-none">
+                    <q-icon :name="isEditing ? 'edit' : 'person_add'" color="primary" size="28px" class="q-mr-sm" />
                     <div class="text-h6">{{ isEditing ? 'Editar' : 'Novo' }} Cliente</div>
                     <q-space />
-                    <q-btn icon="close" flat round dense v-close-popup />
+                    <q-btn icon="close" flat round dense v-close-popup :disable="saving" />
                 </q-card-section>
 
-                <q-card-section class="q-pt-md">
+                <q-card-section class="col scroll q-pt-md">
                     <q-form @submit="saveCliente" class="q-gutter-md">
                         <q-input v-model="form.nome" label="Nome / Razão Social *" outlined dense
-                            :rules="[val => !!val || 'Nome é obrigatório']" />
+                            :rules="[val => !!val || 'Nome é obrigatório']" :disable="saving" />
 
                         <div class="row q-col-gutter-md">
                             <div class="col-12 col-sm-6">
                                 <q-input v-model="form.cpf" label="CPF" outlined dense mask="###.###.###-##"
-                                    unmasked-value />
+                                    unmasked-value :disable="saving" />
                             </div>
                             <div class="col-12 col-sm-6">
                                 <q-input v-model="form.cnpj" label="CNPJ" outlined dense mask="##.###.###/####-##"
-                                    unmasked-value />
+                                    unmasked-value :disable="saving" />
                             </div>
                         </div>
 
@@ -109,25 +147,31 @@
                             <div class="col-12 col-sm-6">
                                 <q-input v-model="form.email" label="E-mail" type="email" outlined dense :rules="[
                                     val => !val || /.+@.+\..+/.test(val) || 'E-mail inválido'
-                                ]" />
+                                ]" :disable="saving" />
                             </div>
                             <div class="col-12 col-sm-6">
                                 <q-input v-model="form.telefone" label="Telefone / Celular" outlined dense
-                                    mask="(##) #####-####" unmasked-value />
+                                    mask="(##) #####-####" unmasked-value :disable="saving" />
                             </div>
                         </div>
 
                         <q-input v-model="form.descricao" label="Descrição" type="textarea" outlined dense rows="3"
-                            autogrow />
+                            autogrow :disable="saving"
+                            hint="Informações adicionais sobre o cliente (visível na listagem)." />
 
                         <div class="row items-center q-mt-sm">
-                            <q-toggle v-model="form.ativo" label="Cliente Ativo" color="positive" />
+                            <q-toggle v-model="form.ativo" label="Cliente Ativo" color="positive" :disable="saving" />
                         </div>
 
-                        <div class="row justify-end q-mt-md">
-                            <q-btn label="Cancelar" color="grey-7" flat v-close-popup class="q-mr-sm" />
-                            <q-btn :label="isEditing ? 'Salvar' : 'Cadastrar'" color="primary" type="submit"
-                                :loading="saving" />
+                        <div class="row justify-end q-col-gutter-sm q-mt-md">
+                            <div :class="$q.screen.lt.sm ? 'col-12' : ''">
+                                <q-btn label="Cancelar" color="grey-7" flat v-close-popup no-caps
+                                    :class="$q.screen.lt.sm ? 'full-width' : 'q-mr-sm'" :disable="saving" />
+                            </div>
+                            <div :class="$q.screen.lt.sm ? 'col-12' : ''">
+                                <q-btn :label="isEditing ? 'Salvar' : 'Cadastrar'" color="primary" type="submit" no-caps
+                                    :loading="saving" :class="$q.screen.lt.sm ? 'full-width' : ''" />
+                            </div>
                         </div>
                     </q-form>
                 </q-card-section>
@@ -135,8 +179,8 @@
         </q-dialog>
 
         <!-- Diálogo de Confirmação de Exclusão -->
-        <q-dialog v-model="dialogExclusao" persistent>
-            <q-card style="min-width: 350px">
+        <q-dialog v-model="dialogExclusao" persistent :maximized="$q.screen.lt.sm">
+            <q-card :style="$q.screen.lt.sm ? '' : 'min-width: 350px; max-width: 500px;'">
                 <q-card-section class="row items-center q-pb-none">
                     <q-avatar icon="warning" color="negative" text-color="white" class="q-mr-sm" />
                     <div class="text-h6">Excluir Cliente?</div>
@@ -153,9 +197,15 @@
                     </div>
                 </q-card-section>
 
-                <q-card-actions align="right" class="q-pb-md q-pr-md">
-                    <q-btn label="Cancelar" color="grey-7" flat v-close-popup class="q-mr-sm" />
-                    <q-btn label="Excluir" color="negative" unelevated :loading="deleting" @click="deletarCliente" />
+                <q-card-actions align="right" class="q-pb-md q-pr-md q-col-gutter-sm">
+                    <div :class="$q.screen.lt.sm ? 'col-12' : ''">
+                        <q-btn label="Cancelar" color="grey-7" flat v-close-popup no-caps
+                            :class="$q.screen.lt.sm ? 'full-width' : 'q-mr-sm'" />
+                    </div>
+                    <div :class="$q.screen.lt.sm ? 'col-12' : ''">
+                        <q-btn label="Excluir" color="negative" unelevated :loading="deleting" no-caps
+                            :class="$q.screen.lt.sm ? 'full-width' : ''" @click="deletarCliente" />
+                    </div>
                 </q-card-actions>
             </q-card>
         </q-dialog>
@@ -224,7 +274,8 @@ const filteredClientes = computed(() => {
         c.email?.toLowerCase().includes(term) ||
         c.cpf?.toLowerCase().includes(term) ||
         c.cnpj?.toLowerCase().includes(term) ||
-        c.telefone?.toLowerCase().includes(term)
+        c.telefone?.toLowerCase().includes(term) ||
+        c.descricao?.toLowerCase().includes(term)
     )
 })
 
@@ -259,7 +310,6 @@ const confirmarExclusao = (cliente) => {
 // ==========================================
 const { mutateAsync: saveClienteMutation, isPending: saving } = useMutation({
     mutationFn: async ({ formData, isEditing }) => {
-        // Normaliza campos opcionais vazios para null (evita colisão de UNIQUE)
         const payload = {
             ...formData,
             email: formData.email || null,
@@ -338,44 +388,13 @@ const deletarCliente = async () => {
 </script>
 
 <style scoped>
-.page-header {
-    min-height: 40px;
-}
-
-.new-order-btn {
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.responsive-table {
-    width: 100%;
-}
-
 :deep(.q-td) {
     white-space: normal;
 }
 
-@media (max-width: 599px) {
-    .page-header {
-        align-items: stretch;
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-
-    .page-header .text-h5 {
-        width: 100%;
-        font-size: 1.25rem;
-    }
-
-    .new-order-btn {
-        margin-left: 0;
-        width: 100%;
-    }
-
-    .cliente-dialog-card {
-        max-width: 100%;
-        max-height: 100vh;
-        border-radius: 0;
-        margin: 0;
-    }
+/* Popover de descrição: limita a largura e adiciona leve sombra */
+.cliente-descricao-menu {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
 }
 </style>

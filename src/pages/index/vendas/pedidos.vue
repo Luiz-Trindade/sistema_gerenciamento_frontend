@@ -8,10 +8,14 @@
         </q-breadcrumbs>
 
         <!-- Cabeçalho da Página -->
-        <div class="row items-center q-mb-md page-header">
-            <div class="text-h5 text-weight-bold">Pedidos de Venda</div>
-            <q-space />
-            <q-btn color="primary" icon="add" label="Novo Pedido" @click="openDialog()" class="q-ml-sm new-order-btn" />
+        <div class="row items-center q-mb-md q-col-gutter-sm">
+            <div class="col-12 col-sm">
+                <div class="text-h5 text-weight-bold">Pedidos de Venda</div>
+            </div>
+            <div class="col-12 col-sm-auto">
+                <q-btn color="primary" icon="add" label="Novo Pedido" no-caps @click="openDialog()"
+                    :class="$q.screen.lt.sm ? 'full-width' : ''" />
+            </div>
         </div>
 
         <!-- Barra de Ferramentas (Busca) -->
@@ -32,7 +36,7 @@
         <!-- Tabela de Pedidos -->
         <q-card bordered class="no-shadow">
             <q-table :rows="filteredPedidos" :columns="columns" row-key="id" :loading="loading"
-                :pagination="{ rowsPerPage: 10 }" flat class="responsive-table">
+                :pagination="{ rowsPerPage: 10 }" flat class="full-width">
 
                 <template v-slot:body-cell-valor_total="props">
                     <q-td :props="props" class="text-weight-medium text-right">
@@ -70,87 +74,202 @@
             </q-table>
         </q-card>
 
-        <!-- Diálogo de Cadastro/Edição -->
+        <!-- ============================================ -->
+        <!-- DIÁLOGO: NOVO / EDITAR PEDIDO                -->
+        <!-- ============================================ -->
         <q-dialog v-model="dialog" persistent maximized>
-            <q-card class="q-pa-sm q-pa-md-sm pedido-dialog-card">
-                <q-card-section class="row items-center q-pb-none">
-                    <div class="text-h6">{{ isEditing ? 'Editar' : 'Novo' }} Pedido</div>
+            <q-card class="column no-wrap">
+                <!-- HEADER FIXO -->
+                <q-card-section class="row items-center no-wrap bg-primary text-white q-py-sm q-px-md">
+                    <q-icon :name="isEditing ? 'edit' : 'add_shopping_cart'" size="28px" class="q-mr-sm" />
+                    <div>
+                        <div class="text-h6">{{ isEditing ? 'Editar Pedido' : 'Novo Pedido' }}</div>
+                        <div class="text-caption text-white" style="opacity: .85">
+                            {{ isEditing ? 'Altere cliente e status do pedido' : 'Preencha os dados e adicione os itens'
+                            }}
+                        </div>
+                    </div>
                     <q-space />
-                    <q-btn icon="close" flat round dense v-close-popup />
+                    <q-btn icon="close" flat round dense v-close-popup color="white" :disable="saving" />
                 </q-card-section>
 
-                <q-card-section class="q-pt-md">
-                    <q-form @submit="savePedido" class="q-gutter-md">
-                        <q-select v-model="form.cliente" :options="clientesOptions" emit-value map-options outlined
-                            dense label="Cliente *" :rules="[val => !!val || 'Cliente é obrigatório']" />
-
-                        <q-select v-model="form.status" :options="statusOptions" emit-value map-options outlined dense
-                            label="Status *" :rules="[val => !!val || 'Status é obrigatório']" />
-
-                        <!-- Seção de Itens (Apenas na Criação) -->
-                        <div v-if="!isEditing" class="q-mt-md">
-                            <q-separator class="q-mb-md" />
-                            <div class="text-subtitle2 text-weight-bold q-mb-sm">Itens do Pedido</div>
-
-                            <!-- Adicionar Item -->
-                            <div class="row q-col-gutter-sm q-mb-md items-end">
-                                <div class="col-12 col-sm-6">
-                                    <q-select v-model="tempItem.produto_id" :options="produtosOptions" emit-value
-                                        map-options outlined dense label="Produto *"
-                                        :rules="[val => !!val || 'Produto é obrigatório']" />
-                                </div>
-                                <div class="col-6 col-sm-3">
-                                    <q-input v-model.number="tempItem.quantidade" type="number" min="1" outlined dense
-                                        label="Qtd *" :rules="[val => val >= 1 || 'Mínimo 1']" />
-                                </div>
-                                <div class="col-6 col-sm-3">
-                                    <q-btn color="primary" icon="add" label="Adicionar" @click="addItem"
-                                        class="full-width" :disable="!tempItem.produto_id || tempItem.quantidade < 1" />
-                                </div>
+                <!-- FORM (envolve corpo + footer) -->
+                <q-form @submit="savePedido" class="col column no-wrap">
+                    <!-- CORPO ROLÁVEL -->
+                    <q-card-section class="col scroll q-pa-md">
+                        <!-- Dados básicos -->
+                        <div class="row q-col-gutter-md">
+                            <div class="col-12 col-sm-8">
+                                <q-select v-model="form.cliente" :options="clientesOptions" emit-value map-options
+                                    outlined dense label="Cliente *" :rules="[val => !!val || 'Cliente é obrigatório']"
+                                    :disable="saving">
+                                    <template #prepend>
+                                        <q-icon name="person" />
+                                    </template>
+                                </q-select>
                             </div>
-
-                            <!-- Lista de Itens Adicionados -->
-                            <q-list bordered separator class="rounded-borders" v-if="form.itens.length > 0">
-                                <q-item v-for="(item, index) in form.itens" :key="index">
-                                    <q-item-section>
-                                        <q-item-label class="text-weight-medium">{{ getProdutoNome(item.produto_id)
-                                            }}</q-item-label>
-                                        <q-item-label caption>
-                                            Qtd: {{ item.quantidade }} x R$ {{
-                                                formatCurrency(getProdutoPreco(item.produto_id))
-                                            }}
-                                        </q-item-label>
-                                    </q-item-section>
-                                    <q-item-section side class="column items-end">
-                                        <div class="text-weight-bold text-primary q-mb-xs">
-                                            R$ {{ formatCurrency(item.quantidade * getProdutoPreco(item.produto_id)) }}
-                                        </div>
-                                        <q-btn flat round color="negative" icon="close" size="sm"
-                                            @click="removeItem(index)">
-                                            <q-tooltip>Remover item</q-tooltip>
-                                        </q-btn>
-                                    </q-item-section>
-                                </q-item>
-                            </q-list>
-                            <q-banner v-else class="bg-grey-2 text-grey-8 rounded-borders">
-                                Nenhum item adicionado ainda.
-                            </q-banner>
+                            <div class="col-12 col-sm-4">
+                                <q-select v-model="form.status" :options="statusOptions" emit-value map-options outlined
+                                    dense label="Status *" :rules="[val => !!val || 'Status é obrigatório']"
+                                    :disable="saving">
+                                    <template #prepend>
+                                        <q-icon name="flag" />
+                                    </template>
+                                </q-select>
+                            </div>
                         </div>
 
-                        <q-banner v-if="!isEditing" class="bg-orange-1 text-orange-9 rounded-borders q-mt-md">
-                            <template v-slot:avatar>
-                                <q-icon name="info" color="orange" />
+                        <!-- Itens (apenas criação) -->
+                        <template v-if="!isEditing">
+                            <q-separator class="q-my-lg" />
+
+                            <div class="row items-center q-mb-md">
+                                <q-icon name="shopping_basket" color="primary" size="24px" class="q-mr-sm" />
+                                <div class="text-subtitle1 text-weight-bold">Itens do Pedido</div>
+                                <q-space />
+                                <q-badge v-if="form.itens.length" color="primary" class="q-pa-xs"
+                                    :label="`${form.itens.length} ${form.itens.length === 1 ? 'item' : 'itens'}`" />
+                            </div>
+
+                            <!-- Adicionar item -->
+                            <q-card flat bordered class=" q-mb-md">
+                                <q-card-section class="q-pa-md">
+                                    <div class="text-caption text-weight-medium q-mb-sm">
+                                        ADICIONAR ITEM
+                                    </div>
+                                    <div class="row q-col-gutter-sm items-end">
+                                        <div class="col-12 col-sm-6">
+                                            <q-select v-model="tempItem.produto_id" :options="produtosOptions"
+                                                emit-value map-options outlined dense label="Produto" :disable="saving">
+                                                <template #prepend>
+                                                    <q-icon name="inventory_2" />
+                                                </template>
+                                            </q-select>
+                                        </div>
+                                        <div class="col-6 col-sm-3">
+                                            <q-input v-model.number="tempItem.quantidade" type="number" min="1" outlined
+                                                dense label="Qtd" :disable="saving">
+                                                <template #prepend>
+                                                    <q-icon name="numbers" />
+                                                </template>
+                                            </q-input>
+                                        </div>
+                                        <div class="col-6 col-sm-3">
+                                            <q-btn color="primary" icon="add" label="Adicionar" no-caps
+                                                class="full-width" unelevated
+                                                :disable="!tempItem.produto_id || tempItem.quantidade < 1 || saving"
+                                                @click="addItem" />
+                                        </div>
+                                    </div>
+
+                                    <!-- Preview do subtotal -->
+                                    <transition appear enter-active-class="animated fadeIn"
+                                        leave-active-class="animated fadeOut">
+                                        <div v-if="tempItem.produto_id && tempItem.quantidade >= 1"
+                                            class="row items-center q-mt-md q-px-sm">
+                                            <q-icon name="calculate" color="primary" size="18px" class="q-mr-xs" />
+                                            <div class="text-caption text-grey-7 q-mr-sm">Subtotal deste item:</div>
+                                            <div class="text-weight-bold text-primary">
+                                                R$ {{ formatCurrency(tempItem.quantidade *
+                                                    getProdutoPreco(tempItem.produto_id)) }}
+                                            </div>
+                                        </div>
+                                    </transition>
+                                </q-card-section>
+                            </q-card>
+
+                            <!-- Lista de itens adicionados -->
+                            <transition-group name="list" tag="div" appear enter-active-class="animated fadeInDown"
+                                leave-active-class="animated fadeOutUp">
+                                <q-card v-for="(item, index) in form.itens" :key="`${item.produto_id}-${index}`" flat
+                                    bordered class="q-mb-sm">
+                                    <q-card-section class="row items-center no-wrap q-py-sm q-px-md">
+                                        <q-avatar color="primary" text-color="white" size="44px" class="q-mr-md">
+                                            <div class="text-weight-bold">{{ item.quantidade }}x</div>
+                                        </q-avatar>
+                                        <div class="col ellipsis q-pr-sm">
+                                            <div class="text-weight-medium ellipsis">
+                                                {{ getProdutoNome(item.produto_id) }}
+                                            </div>
+                                            <div class="text-caption text-grey-7">
+                                                R$ {{ formatCurrency(getProdutoPreco(item.produto_id)) }} / unidade
+                                            </div>
+                                        </div>
+                                        <div class="text-right q-mr-md">
+                                            <div class="text-weight-bold text-primary">
+                                                R$ {{ formatCurrency(item.quantidade *
+                                                    getProdutoPreco(item.produto_id)) }}
+                                            </div>
+                                        </div>
+                                        <q-btn flat round color="negative" icon="delete_outline" size="sm"
+                                            :disable="saving" @click="removeItem(index)">
+                                            <q-tooltip>Remover item</q-tooltip>
+                                        </q-btn>
+                                    </q-card-section>
+                                </q-card>
+                            </transition-group>
+
+                            <!-- Estado vazio -->
+                            <q-banner v-if="form.itens.length === 0" dense rounded class="bg-grey-2 text-grey-8">
+                                <template #avatar>
+                                    <q-icon name="info" />
+                                </template>
+                                Nenhum item adicionado ainda. Use o formulário acima para incluir produtos.
+                            </q-banner>
+                        </template>
+
+                        <!-- Modo edição: aviso -->
+                        <q-banner v-else dense rounded class="bg-blue-1 text-blue-9 q-mt-md">
+                            <template #avatar>
+                                <q-icon name="info" color="blue-9" />
+                            </template>
+                            Para alterar os itens deste pedido, use a ação
+                            <strong>"Gerenciar Itens"</strong> na lista de pedidos.
+                        </q-banner>
+
+                        <!-- Aviso sobre processamento automático -->
+                        <q-banner v-if="!isEditing" dense rounded class="bg-orange-1 text-orange-9 q-mt-md">
+                            <template #avatar>
+                                <q-icon name="warning" color="orange-9" />
                             </template>
                             O valor total e a baixa no estoque serão processados automaticamente ao criar o pedido.
                         </q-banner>
+                    </q-card-section>
 
-                        <div class="row justify-end q-mt-md">
-                            <q-btn label="Cancelar" color="grey-7" flat v-close-popup class="q-mr-sm" />
-                            <q-btn :label="isEditing ? 'Salvar Alterações' : 'Criar Pedido'" color="primary"
-                                type="submit" :loading="saving" />
+                    <!-- FOOTER FIXO -->
+                    <q-separator />
+                    <q-card-section class="q-pa-md">
+                        <div class="row items-center q-col-gutter-sm">
+                            <!-- Total -->
+                            <div v-if="!isEditing" class="col-12 col-sm">
+                                <div class="text-caption text-grey-7">Total do pedido</div>
+                                <div class="text-h5 text-weight-bold text-primary">
+                                    R$ {{ formatCurrency(valorTotalPedido) }}
+                                </div>
+                            </div>
+                            <div v-else class="col-12 col-sm">
+                                <div class="text-caption text-grey-7">Pedido #{{ form.id }}</div>
+                                <div class="text-subtitle1 text-weight-medium">Editando dados básicos</div>
+                            </div>
+
+                            <!-- Botões -->
+                            <div class="col-12 col-sm-auto">
+                                <div class="row q-col-gutter-sm justify-end">
+                                    <div class="col-12 col-sm-auto">
+                                        <q-btn class="full-width" flat color="grey-7" label="Cancelar" no-caps
+                                            v-close-popup :disable="saving" />
+                                    </div>
+                                    <div class="col-12 col-sm-auto">
+                                        <q-btn class="full-width" unelevated color="primary" no-caps
+                                            :label="isEditing ? 'Salvar alterações' : 'Criar pedido'"
+                                            :icon="isEditing ? 'save' : 'check_circle'" type="submit"
+                                            :loading="saving" />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </q-form>
-                </q-card-section>
+                    </q-card-section>
+                </q-form>
             </q-card>
         </q-dialog>
     </q-page>
@@ -193,7 +312,7 @@ const statusOptions = [
 ]
 
 const clientesOptions = computed(() => {
-    return clientes.value.map(c => ({ label: c.nome, value: c.id }))
+    return (clientes.value || []).map(c => ({ label: c.nome, value: c.id }))
 })
 
 const produtosOptions = computed(() => {
@@ -242,6 +361,12 @@ const filteredPedidos = computed(() => {
     )
 })
 
+const valorTotalPedido = computed(() => {
+    return (form.value.itens || []).reduce((sum, item) => {
+        return sum + (item.quantidade * getProdutoPreco(item.produto_id))
+    }, 0)
+})
+
 // --- Métodos Auxiliares ---
 const getProdutoNome = (produtoId) => {
     const prod = (produtos.value || []).find(p => p.id === produtoId)
@@ -250,7 +375,7 @@ const getProdutoNome = (produtoId) => {
 
 const getProdutoPreco = (produtoId) => {
     const prod = (produtos.value || []).find(p => p.id === produtoId)
-    return prod ? prod.preco : 0
+    return prod ? parseFloat(prod.preco) : 0
 }
 
 const formatCurrency = (value) => {
@@ -302,11 +427,11 @@ const openDialog = (pedido = null) => {
             id: pedido.id,
             cliente: pedido.cliente?.id || pedido.cliente,
             status: pedido.status,
-            itens: [] // Edição de itens é feita via "Gerenciar Itens"
+            itens: []
         }
     } else {
         isEditing.value = false
-        form.value = { ...defaultForm }
+        form.value = { ...defaultForm, itens: [] }
         tempItem.value = { produto_id: null, quantidade: 1, observacao: '' }
     }
     dialog.value = true
@@ -328,18 +453,18 @@ const savePedido = async () => {
         const payload = { cliente: form.value.cliente, status: form.value.status }
         if (!isEditing.value) payload.itens = form.value.itens
         await savePedidoMutation({ payload, editing: isEditing.value, id: form.value.id })
-        $q.notify({ color: 'positive', message: isEditing.value ? 'Pedido atualizado com sucesso!' : 'Pedido criado e estoque reservado com sucesso!', icon: 'check' })
+        $q.notify({
+            color: 'positive',
+            message: isEditing.value
+                ? 'Pedido atualizado com sucesso!'
+                : 'Pedido criado e estoque reservado com sucesso!',
+            icon: 'check_circle'
+        })
         dialog.value = false
     } catch (error) {
         const data = error.response?.data
         const errorMsg = data?.detail || data?.itens?.[0] || data?.non_field_errors?.[0] || 'Erro ao salvar pedido'
-
-        $q.notify({
-            color: 'negative',
-            message: errorMsg,
-            icon: 'error',
-            timeout: 5000 // Tempo maior para ler erros de validação
-        })
+        $q.notify({ color: 'negative', message: errorMsg, icon: 'error', timeout: 5000 })
     }
 }
 
@@ -376,43 +501,27 @@ const gerenciarItens = (pedido) => {
     })
     // router.push(`/vendas/pedidos/${pedido.id}/itens`)
 }
-
 </script>
 
 <style scoped>
-.page-header {
-    min-height: 40px;
+/* Animações de lista */
+.list-enter-active,
+.list-leave-active {
+    transition: all 0.25s ease;
 }
 
-.new-order-btn {
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.list-enter-from {
+    opacity: 0;
+    transform: translateY(-10px);
 }
 
-.responsive-table {
+.list-leave-to {
+    opacity: 0;
+    transform: translateX(20px);
+}
+
+.list-leave-active {
+    position: absolute;
     width: 100%;
-}
-
-@media (max-width: 599px) {
-    .page-header {
-        align-items: stretch;
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-
-    .page-header .text-h5 {
-        width: 100%;
-        font-size: 1.25rem;
-    }
-
-    .new-order-btn {
-        margin-left: 0;
-        width: 100%;
-    }
-
-    .pedido-dialog-card {
-        width: 100%;
-        max-height: 100vh;
-        border-radius: 0;
-    }
 }
 </style>
