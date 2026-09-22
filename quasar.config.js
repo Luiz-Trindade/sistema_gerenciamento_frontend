@@ -97,7 +97,7 @@ export default defineConfig((/* ctx */) => {
         pwa: {
             workboxMode: 'GenerateSW',
             injectPWAMetaTags: true,
-            extendManifestJson(json) {
+            extendPWAManifestJson(json) {
                 json.name = 'Simples Gestão'
                 json.short_name = 'Simples'
                 json.description = 'Sistema de gestão de estoque e vendas'
