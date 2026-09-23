@@ -1,0 +1,1 @@
+icongenie generate -m pwa -i public/favicon.png

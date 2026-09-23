@@ -12,14 +12,23 @@
 // to match your app's branding.
 // Tip: Use the "Theme Builder" on Quasar's documentation website.
 
-$primary   : #1976D2;
-$secondary : #26A69A;
-$accent    : #9C27B0;
+// quasar.variables.scss
+$primary: #2563eb; // Azul moderno (Tailwind blue-600)
+$secondary: #64748b; // Slate neutro
+$accent: #8b5cf6; // Violeta para destaques
 
-$dark      : #1D1D1D;
-$dark-page : #121212;
+$positive: #10b981; // Emerald
+$negative: #ef4444; // Red
+$info: #0ea5e9; // Sky
+$warning: #f59e0b; // Amber
 
-$positive  : #21BA45;
-$negative  : #C10015;
-$info      : #31CCEC;
-$warning   : #F2C037;
+$dark-page: #0f1115;
+$dark: #1a1d23;
+
+$generic-border-radius: 8px;
+$typography-font-family:
+    'Inter',
+    'Roboto',
+    -apple-system,
+    sans-serif;
+$body-font-size: 14px;

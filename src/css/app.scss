@@ -1,1 +1,545 @@
-// app global css
+// =============================================================================
+// app.scss - ERP Quasar Global Styles
+// Clean, minimalista, moderno
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// 1. VARIÁVEIS GLOBAIS DO SISTEMA
+// -----------------------------------------------------------------------------
+$erp-radius-sm: 6px;
+$erp-radius-md: 10px;
+$erp-radius-lg: 14px;
+
+$erp-shadow-sm:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 1px 3px rgba(0, 0, 0, 0.06);
+$erp-shadow-md:
+    0 4px 6px -1px rgba(0, 0, 0, 0.06),
+    0 2px 4px -1px rgba(0, 0, 0, 0.04);
+$erp-shadow-lg:
+    0 10px 15px -3px rgba(0, 0, 0, 0.08),
+    0 4px 6px -2px rgba(0, 0, 0, 0.04);
+
+$erp-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+$erp-transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+
+$erp-border: 1px solid rgba(0, 0, 0, 0.08);
+$erp-border-dark: 1px solid rgba(255, 255, 255, 0.08);
+
+// -----------------------------------------------------------------------------
+// 2. RESET & BASE
+// -----------------------------------------------------------------------------
+* {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+body {
+    font-family:
+        'Inter',
+        'Roboto',
+        -apple-system,
+        BlinkMacSystemFont,
+        'Segoe UI',
+        Oxygen,
+        Ubuntu,
+        Cantarell,
+        sans-serif;
+    font-feature-settings: 'cv11', 'ss01';
+    font-variation-settings: 'opsz' 32;
+    letter-spacing: -0.01em;
+    color: rgba(0, 0, 0, 0.87);
+    background-color: #f7f8fa;
+    transition:
+        background-color $erp-transition-base,
+        color $erp-transition-base;
+}
+
+body.body--dark {
+    color: rgba(255, 255, 255, 0.92);
+    background-color: #0f1115;
+}
+
+// -----------------------------------------------------------------------------
+// 3. SCROLLBAR CUSTOMIZADA
+// -----------------------------------------------------------------------------
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.15);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+    transition: background-color $erp-transition-fast;
+
+    &:hover {
+        background-color: rgba(0, 0, 0, 0.3);
+    }
+}
+
+body.body--dark {
+    ::-webkit-scrollbar-thumb {
+        background-color: rgba(255, 255, 255, 0.15);
+
+        &:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+    }
+}
+
+// Firefox
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+body.body--dark * {
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+// -----------------------------------------------------------------------------
+// 4. TIPOGRAFIA
+// -----------------------------------------------------------------------------
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: rgba(0, 0, 0, 0.92);
+}
+
+body.body--dark {
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        color: rgba(255, 255, 255, 0.95);
+    }
+}
+
+.text-caption,
+.text-overline {
+    font-weight: 500;
+}
+
+// -----------------------------------------------------------------------------
+// 5. COMPONENTES QUASAR - QBtn
+// -----------------------------------------------------------------------------
+.q-btn {
+    text-transform: none;
+    font-weight: 500;
+    letter-spacing: 0;
+    border-radius: $erp-radius-sm;
+    transition: all $erp-transition-fast;
+
+    &.q-btn--standard {
+        box-shadow: $erp-shadow-sm;
+
+        &:hover {
+            box-shadow: $erp-shadow-md;
+            transform: translateY(-1px);
+        }
+    }
+
+    &.q-btn--flat,
+    &.q-btn--outline {
+        &:hover {
+            background-color: rgba(0, 0, 0, 0.04);
+        }
+    }
+}
+
+body.body--dark {
+    .q-btn {
+        &.q-btn--flat:hover,
+        &.q-btn--outline:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// 6. COMPONENTES QUASAR - QInput / QField
+// -----------------------------------------------------------------------------
+.q-field {
+    .q-field__control {
+        border-radius: $erp-radius-sm;
+        transition: all $erp-transition-fast;
+    }
+
+    &.q-field--outlined .q-field__control {
+        border: 1px solid rgba(0, 0, 0, 0.12);
+
+        &:hover {
+            border-color: rgba(0, 0, 0, 0.3);
+        }
+    }
+
+    &.q-field--focused .q-field__control {
+        box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.12);
+    }
+}
+
+body.body--dark {
+    .q-field {
+        &.q-field--outlined .q-field__control {
+            border-color: rgba(255, 255, 255, 0.12);
+
+            &:hover {
+                border-color: rgba(255, 255, 255, 0.3);
+            }
+        }
+
+        &.q-field--focused .q-field__control {
+            box-shadow: 0 0 0 3px rgba(100, 180, 255, 0.18);
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// 7. COMPONENTES QUASAR - QCard
+// -----------------------------------------------------------------------------
+.q-card {
+    border-radius: $erp-radius-md;
+    box-shadow: $erp-shadow-sm;
+    border: $erp-border;
+    transition:
+        box-shadow $erp-transition-base,
+        border-color $erp-transition-base;
+
+    &:hover {
+        box-shadow: $erp-shadow-md;
+    }
+}
+
+body.body--dark {
+    .q-card {
+        border: $erp-border-dark;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+
+        &:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// 8. COMPONENTES QUASAR - QTable (crítico para ERP)
+// -----------------------------------------------------------------------------
+.q-table {
+    border-radius: $erp-radius-md;
+    border: $erp-border;
+    overflow: hidden;
+
+    thead tr {
+        background-color: #fafbfc;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+
+        th {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: rgba(0, 0, 0, 0.6);
+            padding: 12px 16px;
+        }
+    }
+
+    tbody tr {
+        transition: background-color $erp-transition-fast;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+
+        &:hover {
+            background-color: rgba(25, 118, 210, 0.04);
+        }
+
+        &:last-child {
+            border-bottom: none;
+        }
+
+        td {
+            padding: 12px 16px;
+            font-size: 13px;
+            color: rgba(0, 0, 0, 0.82);
+        }
+    }
+
+    &__bottom {
+        border-top: $erp-border;
+    }
+}
+
+body.body--dark {
+    .q-table {
+        border: $erp-border-dark;
+
+        thead tr {
+            background-color: rgba(255, 255, 255, 0.02);
+            border-bottom-color: rgba(255, 255, 255, 0.08);
+
+            th {
+                color: rgba(255, 255, 255, 0.6);
+            }
+        }
+
+        tbody tr {
+            border-bottom-color: rgba(255, 255, 255, 0.04);
+
+            &:hover {
+                background-color: rgba(100, 180, 255, 0.06);
+            }
+
+            td {
+                color: rgba(255, 255, 255, 0.85);
+            }
+        }
+
+        &__bottom {
+            border-top-color: rgba(255, 255, 255, 0.08);
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// 9. COMPONENTES QUASAR - QDialog
+// -----------------------------------------------------------------------------
+.q-dialog {
+    .q-card {
+        border-radius: $erp-radius-lg;
+        box-shadow: $erp-shadow-lg;
+        overflow: hidden;
+    }
+}
+
+.q-dialog__backdrop {
+    background-color: rgba(15, 17, 21, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+// -----------------------------------------------------------------------------
+// 10. COMPONENTES QUASAR - QToolbar
+// -----------------------------------------------------------------------------
+.q-toolbar {
+    min-height: 56px;
+    padding: 0 16px;
+}
+
+.q-toolbar__title {
+    font-weight: 600;
+    font-size: 16px;
+    letter-spacing: -0.01em;
+}
+
+// -----------------------------------------------------------------------------
+// 11. COMPONENTES QUASAR - QDrawer
+// -----------------------------------------------------------------------------
+.q-drawer {
+    border-right: $erp-border;
+    box-shadow: none !important;
+}
+
+body.body--dark {
+    .q-drawer {
+        border-right: $erp-border-dark;
+    }
+}
+
+.q-drawer--right {
+    border-right: none;
+    border-left: $erp-border;
+}
+
+body.body--dark .q-drawer--right {
+    border-left: $erp-border-dark;
+}
+
+// -----------------------------------------------------------------------------
+// 12. COMPONENTES QUASAR - QBanner / QBadge
+// -----------------------------------------------------------------------------
+.q-banner {
+    border-radius: $erp-radius-sm;
+    border: $erp-border;
+}
+
+.q-badge {
+    border-radius: 6px;
+    font-weight: 500;
+    padding: 2px 8px;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+}
+
+// -----------------------------------------------------------------------------
+// 13. COMPONENTES QUASAR - QTabs
+// -----------------------------------------------------------------------------
+.q-tabs {
+    .q-tab {
+        text-transform: none;
+        font-weight: 500;
+        padding: 0 16px;
+        min-height: 44px;
+        transition: color $erp-transition-fast;
+    }
+
+    .q-tab--active {
+        font-weight: 600;
+    }
+}
+
+.q-tab__indicator {
+    height: 2px;
+    border-radius: 2px;
+}
+
+// -----------------------------------------------------------------------------
+// 14. COMPONENTES QUASAR - QChip
+// -----------------------------------------------------------------------------
+.q-chip {
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 12px;
+    padding: 4px 10px;
+    height: 28px;
+    border: $erp-border;
+}
+
+body.body--dark .q-chip {
+    border: $erp-border-dark;
+}
+
+// -----------------------------------------------------------------------------
+// 15. LAYOUT HELPERS
+// -----------------------------------------------------------------------------
+.erp-page {
+    padding: 24px;
+    max-width: 1600px;
+    margin: 0 auto;
+
+    @media (max-width: 599px) {
+        padding: 16px;
+    }
+}
+
+.erp-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.erp-section-title {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(0, 0, 0, 0.5);
+    margin-bottom: 12px;
+}
+
+body.body--dark .erp-section-title {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.erp-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+// -----------------------------------------------------------------------------
+// 16. UTILITÁRIOS
+// -----------------------------------------------------------------------------
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.no-select {
+    user-select: none;
+}
+
+.truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity $erp-transition-base;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+}
+
+.slide-up-enter-active,
+.slide-up-leave-active {
+    transition: all $erp-transition-base;
+}
+
+.slide-up-enter-from,
+.slide-up-leave-to {
+    opacity: 0;
+    transform: translateY(8px);
+}
+
+// -----------------------------------------------------------------------------
+// 17. ANIMAÇÕES GLOBAIS
+// -----------------------------------------------------------------------------
+@keyframes erp-pulse-soft {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.6;
+    }
+}
+
+.erp-loading {
+    animation: erp-pulse-soft 1.5s ease-in-out infinite;
+}
+
+// -----------------------------------------------------------------------------
+// 18. IMPRESSÃO
+// -----------------------------------------------------------------------------
+@media print {
+    .q-drawer,
+    .q-header,
+    .q-footer,
+    .q-fab,
+    .no-print {
+        display: none !important;
+    }
+
+    body {
+        background: white !important;
+        color: black !important;
+    }
+
+    .q-card {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+    }
+}

@@ -1,5 +1,5 @@
 <template>
-    <q-layout view="hHh LpR fFf">
+    <q-layout view="lHh Lpr lFf">
 
         <!-- ================= HEADER SUPERIOR ================= -->
         <q-header v-if="route.path !== '/login'" bordered class="bg-primary text-white shadow-2">
