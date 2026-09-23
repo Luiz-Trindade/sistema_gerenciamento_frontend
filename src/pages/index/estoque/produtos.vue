@@ -1,13 +1,13 @@
 <template>
-    <q-page class="q-pa-xs q-pa-sm-sm produtos-page">
-        <!-- Breadcrumbs (Navegação estrutural) -->
+    <q-page class="q-pa-sm q-pa-md-sm">
+        <!-- Breadcrumbs -->
         <q-breadcrumbs active-color="primary" separator-color="grey-4" class="q-mb-md">
             <q-breadcrumbs-el label="Início" icon="home" to="/" />
             <q-breadcrumbs-el label="Estoque" icon="inventory_2" to="/estoque" />
             <q-breadcrumbs-el label="Produtos" icon="shopping_bag" />
         </q-breadcrumbs>
 
-        <!-- Cabeçalho da Página -->
+        <!-- Cabeçalho -->
         <div class="row items-center q-mb-md page-header">
             <div class="text-h5 text-weight-bold">Produtos</div>
             <q-space />
@@ -15,7 +15,7 @@
                 class="q-ml-sm new-order-btn" />
         </div>
 
-        <!-- Barra de Ferramentas (Busca) -->
+        <!-- Barra de Busca -->
         <q-card class="q-mb-md no-shadow" bordered>
             <q-card-section class="row items-center q-py-sm q-px-sm">
                 <q-input v-model="search" dense outlined placeholder="Buscar por nome ou descrição..."
@@ -30,10 +30,10 @@
             </q-card-section>
         </q-card>
 
-        <!-- Tabela de Produtos -->
+        <!-- Tabela -->
         <q-card bordered class="no-shadow">
             <q-table :rows="filteredProdutos" :columns="columns" row-key="id" :loading="loading"
-                :pagination="{ rowsPerPage: 10 }" flat class="responsive-table" table-style="min-width: 700px">
+                :pagination="{ rowsPerPage: 10 }" flat class="responsive-table">
 
                 <template v-slot:body-cell-preco="props">
                     <q-td :props="props" class="text-weight-medium text-right">
@@ -75,7 +75,7 @@
             </q-table>
         </q-card>
 
-        <!-- Diálogo de Cadastro/Edição -->
+        <!-- Diálogo -->
         <q-dialog v-model="dialog" persistent maximized>
             <q-card class="q-pa-sm q-pa-md-sm produto-dialog-card">
                 <q-card-section class="row items-center q-pb-none">
@@ -123,7 +123,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 const $q = useQuasar()
 const queryClient = useQueryClient()
 
-// --- Estado Local (Apenas para controle de UI) ---
 const search = ref('')
 const dialog = ref(false)
 const isEditing = ref(false)
@@ -137,7 +136,6 @@ const defaultForm = {
 }
 const form = ref({ ...defaultForm })
 
-// --- Colunas da Tabela ---
 const columns = [
     { name: 'nome', label: 'Nome', field: 'nome', align: 'left', sortable: true },
     { name: 'descricao', label: 'Descrição', field: 'descricao', align: 'left' },
@@ -147,14 +145,8 @@ const columns = [
     { name: 'actions', label: 'Ações', align: 'center' }
 ]
 
-// ==========================================
-// 1. VUE QUERY: LEITURA (GET)
-// ==========================================
-// Substitui o `const produtos = ref([])` e o `onMounted` + `fetchProdutos`
-const {
-    data: produtos, // Será um Ref reativo com os dados (ou undefined no primeiro load)
-    isLoading: loading
-} = useQuery({
+// --- LEITURA ---
+const { data: produtos, isLoading: loading } = useQuery({
     queryKey: ['produtos'],
     queryFn: async () => {
         const response = await api.get('/produtos/')
@@ -162,13 +154,9 @@ const {
     }
 })
 
-// --- Computed ---
 const filteredProdutos = computed(() => {
-    // Fallback para [] caso os dados ainda estejam carregando (undefined)
     const lista = produtos.value || []
-
     if (!search.value) return lista
-
     const term = search.value.toLowerCase()
     return lista.filter(p =>
         p.nome.toLowerCase().includes(term) ||
@@ -176,7 +164,6 @@ const filteredProdutos = computed(() => {
     )
 })
 
-// --- Métodos Auxiliares ---
 const formatCurrency = (value) => {
     if (value === null || value === undefined) return '0,00'
     return parseFloat(value).toFixed(2).replace('.', ',')
@@ -193,10 +180,7 @@ const openDialog = (produto = null) => {
     dialog.value = true
 }
 
-// ==========================================
-// 2. VUE QUERY: ESCRITA (POST / PUT)
-// ==========================================
-// Usamos mutateAsync para poder usar await e try/catch como no seu código original
+// --- ESCRITA ---
 const { mutateAsync: saveProdutoMutation, isPending: saving } = useMutation({
     mutationFn: async ({ formData, isEditing }) => {
         if (isEditing) {
@@ -208,17 +192,13 @@ const { mutateAsync: saveProdutoMutation, isPending: saving } = useMutation({
         }
     },
     onSuccess: () => {
-        // A MÁGICA: Invalida o cache. O Vue Query busca a lista atualizada do servidor 
-        // automaticamente em background. Não precisamos mais fazer push ou update manual no array.
         queryClient.invalidateQueries({ queryKey: ['produtos'] })
     }
 })
 
 const saveProduto = async () => {
     try {
-        // Aguarda a mutação terminar. Se der erro, cai no catch.
         await saveProdutoMutation({ formData: form.value, isEditing: isEditing.value })
-
         $q.notify({
             color: 'positive',
             message: isEditing.value ? 'Produto atualizado com sucesso!' : 'Produto cadastrado com sucesso!',
@@ -234,9 +214,7 @@ const saveProduto = async () => {
     }
 }
 
-// ==========================================
-// 3. VUE QUERY: EXCLUSÃO (DELETE)
-// ==========================================
+// --- EXCLUSÃO ---
 const { mutateAsync: deleteProdutoMutation } = useMutation({
     mutationFn: async (id) => {
         await api.delete(`/produtos/${id}/`)
@@ -268,7 +246,6 @@ const confirmDelete = (produto) => {
 
 const openMovimentacao = (produto) => {
     $q.notify({ message: `Abrir movimentação para: ${produto.nome}`, color: 'secondary', icon: 'swap_horiz' })
-    // router.push({ name: 'movimentacoes', query: { produtoId: produto.id } })
 }
 </script>
 
@@ -281,13 +258,9 @@ const openMovimentacao = (produto) => {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* Simples como na página de movimentações — o Quasar já cuida do scroll interno */
 .responsive-table {
     width: 100%;
-    overflow-x: auto;
-}
-
-.responsive-table :deep(.q-table__middle) {
-    overflow-x: auto;
 }
 
 .form-actions {
@@ -295,16 +268,16 @@ const openMovimentacao = (produto) => {
     gap: 8px;
 }
 
+/* Dialog maximized elegante e centralizado em telas grandes */
+.produto-dialog-card {
+    max-width: 600px;
+    width: 100%;
+    margin: auto;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
 @media (max-width: 599px) {
-    .produtos-page {
-        padding: 8px;
-    }
-
-    .q-breadcrumbs {
-        overflow-x: auto;
-        white-space: nowrap;
-    }
-
     .page-header {
         align-items: stretch;
         flex-wrap: wrap;
@@ -330,10 +303,12 @@ const openMovimentacao = (produto) => {
         margin: 0;
     }
 
+    /* No mobile, o dialog ocupa 100% sem margens */
     .produto-dialog-card {
-        width: 100%;
+        max-width: 100%;
         max-height: 100vh;
         border-radius: 0;
+        margin: 0;
     }
 }
 </style>
