@@ -3,7 +3,7 @@
 
         <!-- ================= HEADER SUPERIOR ================= -->
         <q-header v-if="route.path !== '/login'" bordered class="bg-primary text-white shadow-2">
-            <q-toolbar class="q-pl-sm q-pr-md">
+            <q-toolbar class="q-pl-sm q-pr-sm q-gutter-sm">
                 <q-btn flat dense round icon="menu" aria-label="Alternar menu" @click="toggleDrawer"
                     class="gt-sm q-mr-sm" />
 
