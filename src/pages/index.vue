@@ -156,7 +156,7 @@
                 <q-route-tab name="estoque" icon="inventory_2" label="Estoque" to="/estoque" />
                 <q-route-tab name="vendas" icon="point_of_sale" label="Vendas" to="/vendas" />
                 <q-route-tab name="clientes" icon="people" label="Clientes" to="/clientes" />
-                <q-route-tab name="configuracoes" icon="settings" label="Config" to="/config" />
+                <!-- <q-route-tab name="configuracoes" icon="settings" label="Config" to="/config" /> -->
             </q-tabs>
         </q-footer>
 
