@@ -265,7 +265,6 @@
         <q-dialog v-model="receiptDialog" maximized transition-show="fade" transition-hide="fade"
             @hide="selectedPedidoId = null">
             <q-card class="column no-wrap receipt-dialog-card">
-                <!-- HEADER FIXO (chrome da UI, mantém azul) -->
                 <q-card-section class="row items-center no-wrap bg-primary text-white q-py-sm q-px-md">
                     <q-icon name="receipt_long" size="28px" class="q-mr-sm" />
                     <div>
@@ -278,23 +277,18 @@
                     <q-btn icon="close" flat round dense v-close-popup color="white" />
                 </q-card-section>
 
-                <!-- CORPO ROLÁVEL -->
                 <q-card-section class="col scroll q-pa-md flex flex-center receipt-bg">
-                    <!-- Loading -->
                     <div v-if="loadingDetalhes" class="text-center q-pa-xl">
                         <q-spinner color="primary" size="50px" />
                         <div class="text-grey-7 q-mt-md">Carregando comprovante...</div>
                     </div>
 
-                    <!-- Erro -->
                     <div v-else-if="!pedidoDetalhes" class="text-center q-pa-xl text-grey-7">
                         <q-icon name="error_outline" size="60px" />
                         <div class="q-mt-md">Não foi possível carregar os detalhes do pedido.</div>
                     </div>
 
-                    <!-- CUPOM (papel térmico) -->
                     <div v-else class="receipt-paper">
-                        <!-- Cabeçalho -->
                         <div class="receipt-header">
                             <div class="receipt-title">COMPROVANTE DE VENDA</div>
                             <div class="receipt-sub">NÃO É DOCUMENTO FISCAL</div>
@@ -327,12 +321,17 @@
 
                         <div class="receipt-label q-mb-sm">ITENS</div>
 
-                        <div v-if="pedidoDetalhes.itens && pedidoDetalhes.itens.length">
-                            <div v-for="(item, index) in pedidoDetalhes.itens" :key="index" class="receipt-item">
-                                <div class="receipt-item-name">{{ nomeProdutoItem(item) }}</div>
+                        <!-- Loading dos itens (movimentações ainda carregando) -->
+                        <div v-if="loadingItens" class="receipt-muted text-center q-pa-md">
+                            Carregando itens...
+                        </div>
+
+                        <div v-else-if="itensDoPedido.length">
+                            <div v-for="(item, index) in itensDoPedido" :key="index" class="receipt-item">
+                                <div class="receipt-item-name">{{ item.nome }}</div>
                                 <div class="receipt-row receipt-item-calc">
-                                    <span>{{ item.quantidade }} x {{ formatCurrency(precoItem(item)) }}</span>
-                                    <span>{{ formatCurrency(subtotalItem(item)) }}</span>
+                                    <span>{{ item.quantidade }} x {{ formatCurrency(item.preco) }}</span>
+                                    <span>{{ formatCurrency(item.subtotal) }}</span>
                                 </div>
                             </div>
                         </div>
@@ -344,7 +343,7 @@
 
                         <div class="receipt-row">
                             <span>QTD. TOTAL</span>
-                            <span>{{ pedidoDetalhes.quantidade_total ?? pedidoDetalhes.itens?.length ?? 0 }}</span>
+                            <span>{{ pedidoDetalhes.quantidade_total ?? itensDoPedido.length ?? 0 }}</span>
                         </div>
 
                         <div class="receipt-divider">================================</div>
@@ -363,7 +362,6 @@
                     </div>
                 </q-card-section>
 
-                <!-- FOOTER FIXO -->
                 <q-separator />
                 <q-card-section class="q-pa-md">
                     <div class="row q-col-gutter-sm justify-end">
@@ -396,7 +394,6 @@ const search = ref('')
 const dialog = ref(false)
 const isEditing = ref(false)
 
-// Estado do comprovante
 const receiptDialog = ref(false)
 const selectedPedidoId = ref(null)
 
@@ -449,7 +446,19 @@ const { data: pedidos, isLoading: loading } = useQuery({
     queryFn: async () => (await api.get('/pedidos/')).data
 })
 
-// Query sob demanda: detalhes de UM pedido
+// ============================================================
+// CORREÇÃO PRINCIPAL: movimentações
+// O pedido NÃO traz os itens, apenas um array de IDs em
+// `movimentacoes: [14]`. Buscamos todas as movimentações e
+// filtramos localmente pelos IDs do pedido.
+// Usa a MESMA queryKey da página de movimentações → cache
+// compartilhado, sem fetch duplicado.
+// ============================================================
+const { data: movimentacoes, isLoading: loadingItens } = useQuery({
+    queryKey: ['movimentacoes'],
+    queryFn: async () => (await api.get('/movimentacoes/')).data
+})
+
 const { data: pedidoDetalhes, isLoading: loadingDetalhes } = useQuery({
     queryKey: ['pedido-detalhes', selectedPedidoId],
     queryFn: async () => {
@@ -488,15 +497,99 @@ const valorTotalPedido = computed(() => {
     }, 0)
 })
 
+// ============================================================
+// itensDoPedido — agora resolve via movimentações
+// 1. Se o backend já mandar `itens` (qualquer variação), usa.
+// 2. Senão, pega os IDs em `movimentacoes` e busca no cache
+//    da query de movimentações.
+// 3. Normaliza cada item para { nome, quantidade, preco, subtotal }.
+// ============================================================
+const itensDoPedido = computed(() => {
+    if (!pedidoDetalhes.value) return []
+    const p = pedidoDetalhes.value
+
+    // 1) Tenta array de itens direto (alguns backends devolvem)
+    let rawItens = p.itens ?? p.items ?? p.produtos_itens ?? p.pedido_itens ?? null
+
+    // 2) Fallback: resolve via movimentações
+    if (!Array.isArray(rawItens)) {
+        const ids = Array.isArray(p.movimentacoes) ? p.movimentacoes : []
+        if (!ids.length) return []
+
+        const todas = movimentacoes.value || []
+        rawItens = ids
+            .map(ref => {
+                // `ref` pode ser número (ID) OU objeto já detalhado
+                if (ref && typeof ref === 'object') return ref
+                return todas.find(m => m.id === ref) || null
+            })
+            .filter(Boolean)
+    }
+
+    if (!Array.isArray(rawItens) || rawItens.length === 0) return []
+
+    // 3) Normaliza
+    return rawItens.map(item => {
+        // --- Produto ---
+        let produtoObj = null
+        if (item.produto && typeof item.produto === 'object') {
+            produtoObj = item.produto
+        } else {
+            const pid = item.produto_id
+                ?? (typeof item.produto === 'number' ? item.produto : null)
+                ?? (typeof item.produto === 'string' && !isNaN(Number(item.produto)) ? Number(item.produto) : null)
+            if (pid != null) {
+                produtoObj = (produtos.value || []).find(x => x.id === pid) || null
+            }
+        }
+
+        // --- Quantidade ---
+        const quantidade = Number(
+            item.quantidade
+            ?? item.qtd
+            ?? item.qtde
+            ?? item.quantity
+            ?? 0
+        ) || 0
+
+        // --- Preço unitário ---
+        let preco = parseFloat(
+            item.preco_unitario
+            ?? item.preco
+            ?? item.valor_unitario
+            ?? item.valor
+            ?? produtoObj?.preco
+            ?? 0
+        ) || 0
+
+        // Fallback: busca preço no catálogo de produtos
+        if (!preco && produtoObj?.id) {
+            const cat = (produtos.value || []).find(x => x.id === produtoObj.id)
+            if (cat) preco = parseFloat(cat.preco) || 0
+        }
+
+        // --- Subtotal ---
+        const subtotal = item.subtotal != null
+            ? parseFloat(item.subtotal)
+            : (item.total != null ? parseFloat(item.total) : quantidade * preco)
+
+        // --- Nome ---
+        const nome = produtoObj?.nome
+            || item.produto_nome
+            || item.nome_produto
+            || item.nome
+            || (item.produto_id != null ? `Produto #${item.produto_id}` : 'Produto')
+
+        return { nome, quantidade, preco, subtotal }
+    })
+})
+
 const valorTotalDetalhes = computed(() => {
     if (!pedidoDetalhes.value) return 0
     if (pedidoDetalhes.value.valor_total != null) {
         return parseFloat(pedidoDetalhes.value.valor_total)
     }
-    return (pedidoDetalhes.value.itens || []).reduce(
-        (sum, item) => sum + subtotalItem(item),
-        0
-    )
+    return itensDoPedido.value.reduce((sum, item) => sum + item.subtotal, 0)
 })
 
 // --- Métodos Auxiliares ---
@@ -546,26 +639,7 @@ const nomeCliente = (pedido) => {
         || 'Não informado'
 }
 
-const nomeProdutoItem = (item) => {
-    return item.produto?.nome
-        || item.produto_nome
-        || getProdutoNome(item.produto_id ?? item.produto)
-        || 'Produto'
-}
-
-const precoItem = (item) => {
-    if (item.preco_unitario != null) return parseFloat(item.preco_unitario)
-    if (item.preco != null) return parseFloat(item.preco)
-    if (item.produto?.preco != null) return parseFloat(item.produto.preco)
-    return getProdutoPreco(item.produto_id ?? item.produto?.id)
-}
-
-const subtotalItem = (item) => {
-    if (item.subtotal != null) return parseFloat(item.subtotal)
-    return (item.quantidade || 0) * precoItem(item)
-}
-
-// --- Lógica de Itens ---
+// --- Lógica de Itens (formulário novo pedido) ---
 const addItem = () => {
     if (!tempItem.value.produto_id || tempItem.value.quantidade < 1) {
         $q.notify({ color: 'warning', message: 'Selecione um produto e uma quantidade válida.', icon: 'warning' })
@@ -601,7 +675,11 @@ const { mutateAsync: savePedidoMutation, isPending: saving } = useMutation({
     mutationFn: async ({ payload, editing, id }) => editing
         ? (await api.put(`/pedidos/${id}/`, payload)).data
         : (await api.post('/pedidos/', payload)).data,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pedidos'] })
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['pedidos'] })
+        // Se um pedido é criado/editado, movimentações mudam também
+        queryClient.invalidateQueries({ queryKey: ['movimentacoes'] })
+    }
 })
 
 const savePedido = async () => {
@@ -630,7 +708,10 @@ const savePedido = async () => {
 
 const { mutateAsync: deletePedidoMutation } = useMutation({
     mutationFn: async (id) => api.delete(`/pedidos/${id}/`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pedidos'] })
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['pedidos'] })
+        queryClient.invalidateQueries({ queryKey: ['movimentacoes'] })
+    }
 })
 
 const confirmDelete = (pedido) => {
@@ -658,7 +739,6 @@ const gerenciarItens = (pedido) => {
     receiptDialog.value = true
 }
 
-// Impressão: abre uma janela só com o cupom (mesmo estilo térmico)
 const printReceipt = () => {
     const paper = document.querySelector('.receipt-paper')
     if (!paper) return
@@ -725,7 +805,6 @@ const printReceipt = () => {
 </script>
 
 <style scoped>
-/* ====== Animações de lista ====== */
 .list-enter-active,
 .list-leave-active {
     transition: all 0.25s ease;
@@ -746,7 +825,6 @@ const printReceipt = () => {
     width: 100%;
 }
 
-/* ====== Dialog do comprovante ====== */
 .receipt-dialog-card {
     max-width: 640px;
     width: 100%;
@@ -756,15 +834,12 @@ const printReceipt = () => {
     border-radius: 8px;
 }
 
-/* Fundo do "ambiente" (mesa onde o papel está em cima) */
 .receipt-bg {
     background: #e9e6dc;
 }
 
-/* ====== Papel térmico ====== */
 .receipt-paper {
     background: #fdfbf3;
-    /* off-white amarelado, cor de papel térmico */
     color: #1a1a1a;
     padding: 24px 20px;
     width: 100%;
@@ -775,7 +850,6 @@ const printReceipt = () => {
     line-height: 1.5;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
     border-radius: 2px;
-    /* Cantos serrilhados no topo/base (efeito de papel térmico) */
     background-image:
         linear-gradient(45deg, transparent 33.333%, #e9e6dc 33.333%, #e9e6dc 66.667%, transparent 66.667%),
         linear-gradient(-45deg, transparent 33.333%, #e9e6dc 33.333%, #e9e6dc 66.667%, transparent 66.667%);
@@ -784,7 +858,6 @@ const printReceipt = () => {
     background-position: top center, bottom center;
 }
 
-/* Cabeçalho */
 .receipt-header {
     text-align: center;
 }
@@ -802,7 +875,6 @@ const printReceipt = () => {
     letter-spacing: .5px;
 }
 
-/* Linhas tracejadas literais (=, -) */
 .receipt-divider {
     color: #555;
     font-size: 12px;
@@ -813,7 +885,6 @@ const printReceipt = () => {
     text-align: center;
 }
 
-/* Linhas de dados (label ... valor) */
 .receipt-row {
     display: flex;
     justify-content: space-between;
@@ -837,7 +908,6 @@ const printReceipt = () => {
     margin-bottom: 8px;
 }
 
-/* Itens */
 .receipt-item {
     margin-bottom: 6px;
 }
@@ -857,7 +927,6 @@ const printReceipt = () => {
     font-size: 12px;
 }
 
-/* Total em destaque (borda dupla em cima/baixo, estilo cupom) */
 .receipt-total {
     display: flex;
     justify-content: space-between;
@@ -870,7 +939,6 @@ const printReceipt = () => {
     margin: 4px 0;
 }
 
-/* Rodapé */
 .receipt-footer {
     text-align: center;
     font-size: 11px;
@@ -879,7 +947,6 @@ const printReceipt = () => {
     letter-spacing: .5px;
 }
 
-/* Mobile: dialog full-screen */
 @media (max-width: 599px) {
     .receipt-dialog-card {
         max-width: 100%;
@@ -898,7 +965,6 @@ const printReceipt = () => {
         max-width: 100%;
         box-shadow: none;
         border-radius: 0;
-        /* sem serrilhado no mobile pra não cortar conteúdo */
         background-image: none;
         background: #fdfbf3;
     }
