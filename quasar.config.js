@@ -103,8 +103,8 @@ export default defineConfig((/* ctx */) => {
                 json.description = 'Sistema de gestão de estoque e vendas'
                 json.display = 'standalone'
                 json.orientation = 'any'
-                json.background_color = '#1976d2'
-                json.theme_color = '#1976d2'
+                json.background_color = '#045df1'
+                json.theme_color = '#045df1'
                 json.lang = 'pt-BR'
                 json.dir = 'ltr'
                 return json
