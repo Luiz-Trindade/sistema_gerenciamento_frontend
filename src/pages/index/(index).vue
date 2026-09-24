@@ -1,21 +1,23 @@
 <template>
     <q-page class="q-pa-sm q-pa-md-md">
-        <!-- isLoading: carregamento inicial, isFetching: carregamento em background (ex: ao mudar filtro) -->
         <q-inner-loading :showing="isLoading" color="primary" />
 
         <div v-if="!isError">
             <!-- Cabeçalho -->
             <div class="row items-center q-mb-md">
-                <div class="text-h6 text-sm-h5 text-weight-bold">Visão Geral</div>
+                <q-icon name="dashboard" color="primary" size="32px" class="q-mr-sm" />
+                <div>
+                    <div class="text-h6 text-weight-bold">Visão Geral</div>
+                    <div class="text-caption">Resumo do desempenho no período selecionado</div>
+                </div>
                 <q-space />
-                <!-- isFetching mostra o loading no botão durante refetchs em background -->
                 <q-btn flat round icon="refresh" color="primary" @click="refetch" :loading="isFetching">
                     <q-tooltip>Atualizar dados</q-tooltip>
                 </q-btn>
             </div>
 
             <!-- Filtros -->
-            <div class="row q-col-gutter-sm q-mb-md">
+            <div class="row q-col-gutter-sm q-mb-lg">
                 <div class="col-12 col-sm-6 col-md-4">
                     <q-select v-model="filterPeriod" :options="periodOptions" label="Período" outlined dense emit-value
                         map-options />
@@ -25,24 +27,21 @@
                         emit-value map-options disable />
                 </div>
                 <div class="col-12 col-md-4 flex justify-end items-center">
-                    <!-- Ao clicar, atualiza o activePeriod, o que dispara o vue-query automaticamente -->
                     <q-btn color="primary" label="Aplicar" icon="filter_alt" class="full-width" @click="applyFilters"
                         :loading="isFetching" />
                 </div>
             </div>
 
             <!-- KPIs -->
-            <div class="row q-col-gutter-sm q-md-gutter-md q-mb-md">
+            <div class="row q-col-gutter-sm q-md-gutter-md q-mb-lg">
                 <div v-for="kpi in mappedKpis" :key="kpi.label" class="col-6 col-md-3">
-                    <q-card class="no-shadow kpi-card">
+                    <q-card class="full-height">
                         <q-card-section class="q-pa-sm">
                             <div class="row items-center">
                                 <q-icon :name="kpi.icon" :color="kpi.color" size="28px" class="q-mr-sm" />
                                 <div class="col" style="min-width: 0;">
-                                    <div class="text-caption text-grey-7 text-truncate">{{ kpi.label }}</div>
-                                    <div class="text-h6 text-weight-bold text-truncate" :class="`text-${kpi.color}`">
-                                        {{ kpi.value }}
-                                    </div>
+                                    <div class="text-caption text-truncate">{{ kpi.label }}</div>
+                                    <div class="text-h6 text-weight-bold text-truncate">{{ kpi.value }}</div>
                                 </div>
                             </div>
                         </q-card-section>
@@ -50,12 +49,16 @@
                 </div>
             </div>
 
-            <!-- Gráficos (Grid 2x2) -->
+            <!-- Gráficos -->
+            <div class="text-subtitle2 text-weight-bold q-mb-sm">Análises</div>
             <div class="row q-col-gutter-md">
                 <div class="col-12 col-md-6">
-                    <q-card class="no-shadow chart-card">
+                    <q-card class="full-height">
                         <q-card-section>
-                            <div class="text-subtitle1 text-weight-bold q-mb-sm">Evolução de Vendas</div>
+                            <div class="row items-center q-mb-md">
+                                <q-icon name="show_chart" color="positive" size="22px" class="q-mr-sm" />
+                                <div class="text-subtitle1 text-weight-bold">Evolução de Vendas</div>
+                            </div>
                             <div class="chart-container">
                                 <LineChart :data="lineData" :options="lineOptions" />
                             </div>
@@ -64,9 +67,12 @@
                 </div>
 
                 <div class="col-12 col-md-6">
-                    <q-card class="no-shadow chart-card">
+                    <q-card class="full-height">
                         <q-card-section>
-                            <div class="text-subtitle1 text-weight-bold q-mb-sm">Top 5 Produtos</div>
+                            <div class="row items-center q-mb-md">
+                                <q-icon name="leaderboard" color="primary" size="22px" class="q-mr-sm" />
+                                <div class="text-subtitle1 text-weight-bold">Top 5 Produtos</div>
+                            </div>
                             <div class="chart-container">
                                 <BarChart :data="barData1" :options="barOptions1" />
                             </div>
@@ -75,9 +81,12 @@
                 </div>
 
                 <div class="col-12 col-md-6">
-                    <q-card class="no-shadow chart-card">
+                    <q-card class="full-height">
                         <q-card-section>
-                            <div class="text-subtitle1 text-weight-bold q-mb-sm">Meios de Pagamento</div>
+                            <div class="row items-center q-mb-md">
+                                <q-icon name="donut_large" color="warning" size="22px" class="q-mr-sm" />
+                                <div class="text-subtitle1 text-weight-bold">Meios de Pagamento</div>
+                            </div>
                             <div class="chart-container">
                                 <DoughnutChart :data="doughnutData" :options="doughnutOptions" />
                             </div>
@@ -86,9 +95,12 @@
                 </div>
 
                 <div class="col-12 col-md-6">
-                    <q-card class="no-shadow chart-card">
+                    <q-card class="full-height">
                         <q-card-section>
-                            <div class="text-subtitle1 text-weight-bold q-mb-sm">Pedidos por Status</div>
+                            <div class="row items-center q-mb-md">
+                                <q-icon name="bar_chart" color="secondary" size="22px" class="q-mr-sm" />
+                                <div class="text-subtitle1 text-weight-bold">Pedidos por Status</div>
+                            </div>
                             <div class="chart-container">
                                 <BarChart :data="barData2" :options="barOptions2" />
                             </div>
@@ -102,7 +114,7 @@
         <div v-else class="flex flex-center q-pa-xl">
             <div class="text-center">
                 <q-icon name="error_outline" size="48px" color="negative" class="q-mb-md" />
-                <div class="text-h6 text-negative">Erro ao carregar dados</div>
+                <div class="text-h6">Erro ao carregar dados</div>
                 <q-btn color="primary" label="Tentar novamente" class="q-mt-md" @click="refetch" />
             </div>
         </div>
@@ -125,7 +137,7 @@ const $q = useQuasar()
 // --- Filtros ---
 const filterPeriod = ref('month')
 const filterCategory = ref('all')
-const activePeriod = ref('month') // Controla quando a query deve ser executada
+const activePeriod = ref('month')
 
 const periodOptions = [
     { label: 'Hoje', value: 'today' },
@@ -143,11 +155,10 @@ const categoryOptions = [
 ]
 
 const applyFilters = () => {
-    // Ao alterar esta ref, o vue-query detecta a mudança no queryKey e faz o fetch automaticamente
     activePeriod.value = filterPeriod.value
 }
 
-// --- Lógica de Datas ---
+// --- Datas ---
 const getDateRange = (period) => {
     const end = new Date()
     const start = new Date()
@@ -165,43 +176,29 @@ const getDateRange = (period) => {
 }
 
 // --- Vue Query ---
-const {
-    data,
-    isLoading,
-    isFetching,
-    isError,
-    refetch
-} = useQuery({
-    // queryKey como função garante reatividade quando activePeriod muda
+const { data, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: () => ['dashboard', activePeriod.value],
     queryFn: async () => {
         const dates = getDateRange(activePeriod.value)
         const response = await api.get('/dashboards/principal/', { params: dates })
         return response.data
     },
-    // Opcional: manter dados antigos na tela enquanto carrega os novos (evita flicker)
     placeholderData: (previousData) => previousData,
 })
 
 // --- Formatação ---
-const formatCurrency = (value) => {
-    if (value === undefined || value === null || value === '') return 'R$ 0,00'
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value))
-}
+const formatCurrency = (value) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value || 0))
 
-const formatNumber = (value) => {
-    if (value === undefined || value === null || value === '') return '0'
-    return new Intl.NumberFormat('pt-BR').format(Math.round(Number(value)))
-}
+const formatNumber = (value) =>
+    new Intl.NumberFormat('pt-BR').format(Math.round(Number(value || 0)))
 
-// --- Valores animados dos KPIs ---
-// O animateValue muta essas refs ao longo do tempo; os computeds abaixo apenas leem.
+// --- KPIs animados ---
 const animatedVendas = ref(0)
 const animatedTicket = ref(0)
 const animatedClientes = ref(0)
 const animatedPedidos = ref(0)
 
-// Sempre que os KPIs da API chegarem (carga inicial ou refetch), dispara a animação
 watch(
     () => data.value?.kpis,
     (k) => {
@@ -214,7 +211,6 @@ watch(
     { immediate: true }
 )
 
-// --- Mapeamento para o Template ---
 const mappedKpis = computed(() => {
     if (!data.value?.kpis) return []
 
@@ -226,6 +222,7 @@ const mappedKpis = computed(() => {
     ]
 })
 
+// --- Dados dos gráficos ---
 const lineData = computed(() => {
     const chart = data.value?.charts?.evolucao_vendas
     if (!chart) return { labels: [], datasets: [] }
@@ -291,7 +288,7 @@ const barData2 = computed(() => {
     }
 })
 
-// --- Opções dos Gráficos ---
+// --- Opções dos gráficos ---
 const theme = computed(() => ({
     text: $q.dark.isActive ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)',
     grid: $q.dark.isActive ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
@@ -340,41 +337,14 @@ const doughnutOptions = computed(() => ({
 </script>
 
 <style scoped>
-.kpi-card,
-.chart-card {
-    border: 1px solid rgba(0, 0, 0, 0.04);
-    height: 100%;
-    transition: all 0.2s ease;
-}
-
-.kpi-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06) !important;
-}
-
-.kpi-card:active {
-    transform: scale(0.98);
-}
-
-.body--dark .kpi-card,
-.body--dark .chart-card {
-    border-color: rgba(255, 255, 255, 0.08);
-}
-
 .chart-container {
     position: relative;
-    height: 240px;
-}
-
-@media (min-width: 600px) {
-    .chart-container {
-        height: 280px;
-    }
+    height: 260px;
 }
 
 @media (min-width: 1024px) {
     .chart-container {
-        height: 320px;
+        height: 300px;
     }
 }
 </style>
