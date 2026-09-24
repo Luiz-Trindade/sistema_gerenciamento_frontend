@@ -120,21 +120,22 @@
                                 </div>
 
                                 <q-list v-else dense separator>
-                                    <q-item v-for="a in atividadesVisiveis" :key="a.id" clickable
-                                        @click="a.to && $router.push(a.to)">
+                                    <!-- <q-item v-for="a in atividadesVisiveis" :key="a.id" clickable
+                                        @click="a.to && $router.push(a.to)"> -->
+                                    <q-item v-for="a in atividadesVisiveis" :key="a.id">
                                         <q-item-section avatar>
                                             <q-icon :name="a.icon" :color="a.color" size="20px" />
                                         </q-item-section>
                                         <q-item-section>
                                             <q-item-label class="text-body2 ellipsis">{{ a.titulo }}</q-item-label>
                                             <q-item-label class="text-weight-light ellipsis">{{ a.subtitulo
-                                                }}</q-item-label>
+                                            }}</q-item-label>
                                         </q-item-section>
                                         <q-item-section side top>
                                             <q-item-label class="text-weight-medium text-green">{{ a.valor
-                                                }}</q-item-label>
+                                            }}</q-item-label>
                                             <q-item-label class="text-caption text-primary">{{ a.quando
-                                                }}</q-item-label>
+                                            }}</q-item-label>
                                         </q-item-section>
                                     </q-item>
                                 </q-list>
