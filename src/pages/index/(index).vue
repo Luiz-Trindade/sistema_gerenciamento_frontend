@@ -110,10 +110,11 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useQuasar } from 'quasar'
-import { useQuery } from '@tanstack/vue-query' // <-- Import do Vue Query
+import { useQuery } from '@tanstack/vue-query'
 import { api } from '@/boot/axios'
+import { animateValue } from '@/utils'
 
 import LineChart from '@/components/LineChart.vue'
 import BarChart from '@/components/BarChart.vue'
@@ -190,19 +191,38 @@ const formatCurrency = (value) => {
 
 const formatNumber = (value) => {
     if (value === undefined || value === null || value === '') return '0'
-    return new Intl.NumberFormat('pt-BR').format(Number(value))
+    return new Intl.NumberFormat('pt-BR').format(Math.round(Number(value)))
 }
 
-// --- Mapeamento para o Template (Agora usando `data.value` do vue-query) ---
+// --- Valores animados dos KPIs ---
+// O animateValue muta essas refs ao longo do tempo; os computeds abaixo apenas leem.
+const animatedVendas = ref(0)
+const animatedTicket = ref(0)
+const animatedClientes = ref(0)
+const animatedPedidos = ref(0)
+
+// Sempre que os KPIs da API chegarem (carga inicial ou refetch), dispara a animação
+watch(
+    () => data.value?.kpis,
+    (k) => {
+        if (!k) return
+        animateValue(animatedVendas, Number(k.vendas) || 0)
+        animateValue(animatedTicket, Number(k.ticket_medio) || 0)
+        animateValue(animatedClientes, Number(k.clientes) || 0)
+        animateValue(animatedPedidos, Number(k.pedidos) || 0)
+    },
+    { immediate: true }
+)
+
+// --- Mapeamento para o Template ---
 const mappedKpis = computed(() => {
-    const k = data.value?.kpis
-    if (!k) return []
+    if (!data.value?.kpis) return []
 
     return [
-        { label: 'Vendas', value: formatCurrency(k.vendas), icon: 'trending_up', color: 'positive' },
-        { label: 'Ticket Médio', value: formatCurrency(k.ticket_medio), icon: 'receipt_long', color: 'primary' },
-        { label: 'Clientes', value: formatNumber(k.clientes), icon: 'people', color: 'info' },
-        { label: 'Pedidos', value: formatNumber(k.pedidos), icon: 'shopping_cart', color: 'secondary' }
+        { label: 'Vendas', value: formatCurrency(animatedVendas.value), icon: 'trending_up', color: 'positive' },
+        { label: 'Ticket Médio', value: formatCurrency(animatedTicket.value), icon: 'receipt_long', color: 'primary' },
+        { label: 'Clientes', value: formatNumber(animatedClientes.value), icon: 'people', color: 'info' },
+        { label: 'Pedidos', value: formatNumber(animatedPedidos.value), icon: 'shopping_cart', color: 'secondary' }
     ]
 })
 
