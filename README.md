@@ -24,6 +24,10 @@
 
 ---
 
+![Dashboard](./screenshots/dashboard.png)
+
+---
+
 ## 👥 Participantes
 
 - **Caio Pantoja Correa** — 202302416071
