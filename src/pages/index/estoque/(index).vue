@@ -34,7 +34,7 @@
                 <!-- KPIs -->
                 <div class="row q-col-gutter-sm q-md-gutter-md q-mb-lg">
                     <div v-for="kpi in mappedKpis" :key="kpi.label" class="col-6 col-md-3">
-                        <q-card class="full-height" :class="{ 'cursor-pointer': kpi.to }"
+                        <q-card class="full-height" :class="{ 'cursor-pointer': kpi.to }" :style="kpi.style"
                             @click="kpi.to && $router.push(kpi.to)">
                             <q-card-section class="q-pa-sm">
                                 <div class="row items-center">
@@ -317,12 +317,14 @@ const mappedKpis = computed(() => [
         value: formatCurrency(animatedValorEstoque.value),
         icon: 'payments',
         color: 'primary',
+        style: { borderLeft: '4px solid #1976D2' },
     },
     {
         label: 'Produtos ativos',
         value: formatNumber(animatedTotalProdutos.value),
         icon: 'category',
         color: 'info',
+        style: { borderLeft: '4px solid #31CCEC' },
         to: '/estoque/produtos',
     },
     {
@@ -330,6 +332,7 @@ const mappedKpis = computed(() => [
         value: formatNumber(animatedAbaixoMinimo.value),
         icon: 'warning',
         color: kpis.value.abaixo_minimo > 0 ? 'warning' : 'positive',
+        style: { borderLeft: `4px solid ${kpis.value.abaixo_minimo > 0 ? '#F2C037' : '#21BA45'}` },
         badge: kpis.value.abaixo_minimo > 0 ? kpis.value.abaixo_minimo : null,
         to: '/estoque/produtos?filtro=abaixo_minimo',
     },
@@ -338,6 +341,7 @@ const mappedKpis = computed(() => [
         value: formatNumber(animatedMovimentacoes.value),
         icon: 'swap_horiz',
         color: 'secondary',
+        style: { borderLeft: '4px solid #26A69A' },
         to: '/estoque/movimentacoes',
     },
 ])

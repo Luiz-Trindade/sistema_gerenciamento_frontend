@@ -35,7 +35,7 @@
             <!-- KPIs -->
             <div class="row q-col-gutter-sm q-md-gutter-md q-mb-lg">
                 <div v-for="kpi in mappedKpis" :key="kpi.label" class="col-6 col-md-3">
-                    <q-card class="full-height">
+                    <q-card class="full-height" :style="kpi.style">
                         <q-card-section class="q-pa-sm">
                             <div class="row items-center">
                                 <q-icon :name="kpi.icon" :color="kpi.color" size="28px" class="q-mr-sm" />
@@ -135,9 +135,9 @@ import DoughnutChart from '@/components/DoughnutChart.vue'
 const $q = useQuasar()
 
 // --- Filtros ---
-const filterPeriod = ref('month')
+const filterPeriod = ref('year')
 const filterCategory = ref('all')
-const activePeriod = ref('month')
+const activePeriod = ref('year')
 
 const periodOptions = [
     { label: 'Hoje', value: 'today' },
@@ -215,10 +215,10 @@ const mappedKpis = computed(() => {
     if (!data.value?.kpis) return []
 
     return [
-        { label: 'Vendas', value: formatCurrency(animatedVendas.value), icon: 'trending_up', color: 'positive' },
-        { label: 'Ticket Médio', value: formatCurrency(animatedTicket.value), icon: 'receipt_long', color: 'primary' },
-        { label: 'Clientes', value: formatNumber(animatedClientes.value), icon: 'people', color: 'info' },
-        { label: 'Pedidos', value: formatNumber(animatedPedidos.value), icon: 'shopping_cart', color: 'secondary' }
+        { label: 'Vendas', value: formatCurrency(animatedVendas.value), icon: 'trending_up', color: 'positive', style: { borderLeft: '4px solid #21BA45' } },
+        { label: 'Ticket Médio', value: formatCurrency(animatedTicket.value), icon: 'receipt_long', color: 'primary', style: { borderLeft: '4px solid #1976D2' } },
+        { label: 'Clientes', value: formatNumber(animatedClientes.value), icon: 'people', color: 'info', style: { borderLeft: '4px solid #31CCEC' } },
+        { label: 'Pedidos', value: formatNumber(animatedPedidos.value), icon: 'shopping_cart', color: 'secondary', style: { borderLeft: '4px solid #26A69A' } }
     ]
 })
 
@@ -226,15 +226,27 @@ const mappedKpis = computed(() => {
 const lineData = computed(() => {
     const chart = data.value?.charts?.evolucao_vendas
     if (!chart) return { labels: [], datasets: [] }
+
+    const labels = Array.isArray(chart.labels) ? chart.labels : []
+    const values = Array.isArray(chart.data)
+        ? chart.data.map((value) => Number(value) || 0)
+        : []
+
     return {
-        labels: chart.labels || [],
+        labels,
         datasets: [{
             label: 'Receita',
-            data: chart.data || [],
+            data: values,
             borderColor: '#4FC08D',
             backgroundColor: 'rgba(79, 192, 141, 0.15)',
             fill: true,
-            tension: 0.4
+            tension: 0.4,
+            borderWidth: 2,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            pointBackgroundColor: '#4FC08D',
+            pointBorderColor: '#FFFFFF',
+            pointBorderWidth: 2
         }]
     }
 })
@@ -247,7 +259,14 @@ const barData1 = computed(() => {
         datasets: [{
             label: 'Vendas',
             data: chart.data || [],
-            backgroundColor: '#1976D2',
+            backgroundColor: [
+                '#1976D2',
+                '#4FC08D',
+                '#F2C037',
+                '#E53935',
+                '#9C27B0',
+                '#607D8B'
+            ],
             borderRadius: 6
         }]
     }

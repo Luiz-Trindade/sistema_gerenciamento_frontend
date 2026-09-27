@@ -34,7 +34,7 @@
                 <!-- KPIs -->
                 <div class="row q-col-gutter-sm q-md-gutter-md q-mb-lg">
                     <div v-for="kpi in mappedKpis" :key="kpi.label" class="col-6 col-md-3">
-                        <q-card class="full-height" :class="{ 'cursor-pointer': kpi.to }"
+                        <q-card class="full-height" :class="{ 'cursor-pointer': kpi.to }" :style="kpi.style"
                             @click="kpi.to && $router.push(kpi.to)">
                             <q-card-section class="q-pa-sm">
                                 <div class="row items-center">
@@ -335,6 +335,7 @@ const mappedKpis = computed(() => [
         value: formatCurrency(animVendas.value),
         icon: 'trending_up',
         color: 'positive',
+        style: { borderLeft: '4px solid #21BA45' },
         to: '/vendas/pedidos',
     },
     {
@@ -342,12 +343,14 @@ const mappedKpis = computed(() => [
         value: formatCurrency(animTicket.value),
         icon: 'receipt_long',
         color: 'primary',
+        style: { borderLeft: '4px solid #1976D2' },
     },
     {
         label: 'A receber',
         value: formatCurrency(animAReceber.value),
         icon: 'account_balance_wallet',
         color: Number(kpis.value.a_receber) > 0 ? 'warning' : 'positive',
+        style: { borderLeft: '4px solid #F2C037' },
         badge: alertas.value.contas_vencidas.length || null,
         to: '/vendas/contas',
     },
@@ -356,6 +359,7 @@ const mappedKpis = computed(() => [
         value: formatNumber(animPedidos.value),
         icon: 'shopping_cart',
         color: 'secondary',
+        style: { borderLeft: '4px solid #26A69A' },
         to: '/vendas/pedidos',
     },
 ])
