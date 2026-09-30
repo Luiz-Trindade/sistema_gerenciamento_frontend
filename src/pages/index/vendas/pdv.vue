@@ -26,7 +26,7 @@
                                 <q-icon name="search" />
                             </template>
                             <template #append>
-                                <q-icon v-if="search" name="clear" class="cursor-pointer" @click="search = ''" />
+                                <q-icon v-if="search" name="clear" class="cursor-pointer" @click="limparBusca" />
                             </template>
                         </q-input>
                         <div class="text-caption text-grey-6 q-mt-xs q-ml-xs">
@@ -53,6 +53,8 @@
                                     @click="adicionarAoCarrinho(prod)">
                                     <q-card-section class="q-py-sm q-px-md">
                                         <div class="row items-start no-wrap">
+                                            <q-img v-if="prod.imagem" :src="getImageUrl(prod.imagem)" fit="cover"
+                                                class="product-image q-mr-sm" />
                                             <div class="col ellipsis q-pr-sm">
                                                 <div class="text-weight-medium product-name ellipsis-2-lines">
                                                     {{ prod.nome }}
@@ -125,9 +127,9 @@
                                         {{ item.nome }}
                                     </q-item-label>
                                     <q-item-label caption>
-                                        R$ {{ formatCurrency(item.preco) }} × {{ item.quantidade }}
+                                        R$ {{ formatCurrency(item.preco) }} × {{ item.quantidade || 0 }}
                                         <span class="text-primary text-weight-bold q-ml-xs">
-                                            = R$ {{ formatCurrency(item.preco * item.quantidade) }}
+                                            = R$ {{ formatCurrency(item.preco * (item.quantidade || 0)) }}
                                         </span>
                                     </q-item-label>
                                 </q-item-section>
@@ -137,7 +139,8 @@
                                             @click="alterarQuantidade(index, -1)" />
                                         <q-input v-model.number="item.quantidade" type="number" min="1"
                                             :max="item.saldo_estoque" dense outlined class="qty-input q-mx-xs"
-                                            @update:model-value="validarQuantidade(index)" />
+                                            @update:model-value="validarQuantidade(index)"
+                                            @blur="garantirQuantidadeMinima(index)" />
                                         <q-btn flat dense round icon="add" size="sm" color="primary"
                                             @click="alterarQuantidade(index, 1)" />
                                         <q-btn flat dense round icon="close" color="negative" size="sm" class="q-ml-sm"
@@ -286,20 +289,31 @@ const pagarAgora = ref(false)
 const meioPagamentoSelecionado = ref(null)
 const valorRecebido = ref(0)
 
+// --- Helper de Normalização de Lista (Suporte a Paginação do DRF) ---
+const extractList = (data) => {
+    if (!data) return []
+    if (Array.isArray(data)) return data
+    if (Array.isArray(data.results)) return data.results
+    return []
+}
+
 // --- Vue Query ---
-const { data: produtos } = useQuery({
+const { data: produtosData } = useQuery({
     queryKey: ['produtos'],
     queryFn: async () => (await api.get('/produtos/')).data
 })
 
-const { data: clientes } = useQuery({
+const { data: clientesData } = useQuery({
     queryKey: ['clientes'],
     queryFn: async () => (await api.get('/clientes/')).data
 })
 
+const produtos = computed(() => extractList(produtosData.value))
+const clientes = computed(() => extractList(clientesData.value))
+
 // --- Opções ---
 const clientesOptions = computed(() =>
-    (clientes.value || []).map(c => ({ label: c.nome, value: c.id }))
+    clientes.value.map(c => ({ label: c.nome, value: c.id }))
 )
 
 const meioPagamentoOptions = [
@@ -316,12 +330,31 @@ const paymentCardStyle = computed(() => {
     return { width: '500px', maxWidth: '90vw' }
 })
 
+// --- Helpers de Imagem e Moeda ---
+const getImageUrl = (path) => {
+    if (!path) return ''
+    if (path.startsWith('http://') || path.startsWith('https://')) return path
+    const baseURL = api.defaults.baseURL || ''
+    const cleanBase = baseURL.endsWith('/') ? baseURL.slice(0, -1) : baseURL
+    const cleanPath = path.startsWith('/') ? path : `/${path}`
+    return `${cleanBase}${cleanPath}`
+}
+
+const formatCurrency = (value) => {
+    if (value === null || value === undefined || isNaN(value)) return '0,00'
+    return parseFloat(value).toFixed(2).replace('.', ',')
+}
+
+const limparBusca = () => {
+    search.value = ''
+    searchRef.value?.focus()
+}
+
 // --- Filtros ---
 const filteredProdutos = computed(() => {
-    const lista = produtos.value || []
-    const ativos = lista.filter(p => p.ativo)
+    const ativos = produtos.value.filter(p => p.ativo)
     if (!search.value) return ativos
-    const term = search.value.toLowerCase()
+    const term = search.value.toLowerCase().trim()
     return ativos.filter(p => p.nome.toLowerCase().includes(term))
 })
 
@@ -341,17 +374,14 @@ const filterClientes = (val, update) => {
 
 // --- Computed ---
 const totalPedido = computed(() =>
-    carrinho.value.reduce((acc, item) => acc + item.preco * item.quantidade, 0)
+    carrinho.value.reduce((acc, item) => {
+        const qtd = item.quantidade || 0
+        return acc + (item.preco * qtd)
+    }, 0)
 )
 
-// --- Helpers ---
-const formatCurrency = (value) => {
-    if (value === null || value === undefined) return '0,00'
-    return parseFloat(value).toFixed(2).replace('.', ',')
-}
-
 // ============================================================
-// Adicionar ao carrinho (clique no card OU Enter na busca)
+// Adicionar ao carrinho
 // ============================================================
 const adicionarAoCarrinho = (produto) => {
     if (produto.saldo_estoque <= 0) {
@@ -377,33 +407,28 @@ const adicionarAoCarrinho = (produto) => {
 }
 
 // ============================================================
-// Enter na busca → adiciona o primeiro resultado (ou match exato)
-// Isso é o que torna o leitor de código de barras funcionar nativamente
-// (leitores emitem o código + Enter)
+// Enter na busca (Leitor de código de barras)
 // ============================================================
 const handleBarcodeEnter = () => {
     const term = search.value.trim()
     if (!term) return
 
-    // 1) Match exato por nome (case-insensitive)
     const termLower = term.toLowerCase()
-    const exato = (produtos.value || []).find(
+    const exato = produtos.value.find(
         p => p.ativo && p.nome.toLowerCase() === termLower
     )
     if (exato) {
         adicionarAoCarrinho(exato)
-        search.value = ''
+        limparBusca()
         return
     }
 
-    // 2) Senão, se houver exatamente 1 resultado, adiciona ele
     if (filteredProdutos.value.length === 1) {
         adicionarAoCarrinho(filteredProdutos.value[0])
-        search.value = ''
+        limparBusca()
         return
     }
 
-    // 3) Nenhum / vários resultados → notifica
     if (filteredProdutos.value.length === 0) {
         $q.notify({ color: 'warning', message: 'Nenhum produto encontrado.', icon: 'search_off' })
     } else {
@@ -420,7 +445,7 @@ const handleBarcodeEnter = () => {
 // ============================================================
 const alterarQuantidade = (index, delta) => {
     const item = carrinho.value[index]
-    const novaQtd = item.quantidade + delta
+    const novaQtd = (item.quantidade || 0) + delta
     if (novaQtd <= 0) {
         removerDoCarrinho(index)
         return
@@ -432,12 +457,14 @@ const alterarQuantidade = (index, delta) => {
     item.quantidade = novaQtd
 }
 
-// Chamado quando o usuário digita direto no input
 const validarQuantidade = (index) => {
     const item = carrinho.value[index]
     if (!item) return
-    let q = parseInt(item.quantidade) || 1
-    if (q < 1) q = 1
+    if (item.quantidade === null || item.quantidade === '') return
+
+    let q = parseInt(item.quantidade)
+    if (isNaN(q) || q < 1) q = 1
+
     if (q > item.saldo_estoque) {
         q = item.saldo_estoque
         $q.notify({
@@ -447,6 +474,13 @@ const validarQuantidade = (index) => {
         })
     }
     item.quantidade = q
+}
+
+const garantirQuantidadeMinima = (index) => {
+    const item = carrinho.value[index]
+    if (item && (!item.quantidade || item.quantidade < 1)) {
+        item.quantidade = 1
+    }
 }
 
 const removerDoCarrinho = (index) => {
@@ -519,8 +553,7 @@ const confirmarVenda = async () => {
         clienteId.value = null
         dialogPagamento.value = false
         valorRecebido.value = 0
-        search.value = ''
-        searchRef.value?.focus()
+        limparBusca()
     } catch (error) {
         const data = error.response?.data
         const errorMsg =
@@ -552,6 +585,13 @@ const confirmarVenda = async () => {
 .product-card:hover {
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
     transform: translateY(-1px);
+}
+
+.product-image {
+    width: 52px;
+    height: 52px;
+    border-radius: 6px;
+    flex-shrink: 0;
 }
 
 .product-disabled {
@@ -628,10 +668,7 @@ const confirmarVenda = async () => {
     .payment-card {
         border-radius: 0;
     }
-}
 
-/* Pequenos ajustes para telas muito pequenas */
-@media (max-width: 599px) {
     .produtos-scroll {
         max-height: none;
     }
