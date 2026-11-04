@@ -9,16 +9,19 @@
 
         <!-- Cabeçalho -->
         <div class="row items-center q-mb-md page-header">
-            <div class="text-h5 text-weight-bold">Produtos</div>
+            <div>
+                <div class="text-h5 text-weight-bold">Produtos</div>
+                <div class="text-caption text-grey-7">Catálogo de itens e saldos de estoque</div>
+            </div>
             <q-space />
-            <q-btn color="primary" icon="add" label="Novo Produto" @click="openDialog()"
-                class="q-ml-sm new-order-btn" />
+            <q-btn color="primary" icon="add" label="Novo Produto" no-caps @click="openDialog()"
+                class="q-ml-sm new-order-btn" :class="$q.screen.lt.sm ? 'full-width q-mt-sm' : ''" />
         </div>
 
         <!-- Barra de Busca -->
         <q-card class="q-mb-md no-shadow" bordered>
-            <q-card-section class="row items-center q-py-sm q-px-sm">
-                <q-input v-model="search" dense outlined placeholder="Buscar por nome ou descrição..."
+            <q-card-section class="row items-center q-py-sm">
+                <q-input v-model="search" dense outlined placeholder="Buscar produto por nome ou descrição..."
                     class="col-12 col-sm-8 col-md-6">
                     <template #prepend>
                         <q-icon name="search" />
@@ -32,14 +35,24 @@
 
         <!-- Tabela -->
         <q-card bordered class="no-shadow">
-            <q-table :rows="filteredProdutos" :columns="columns" row-key="id" :loading="loading"
-                :pagination="{ rowsPerPage: 10 }" flat class="responsive-table">
+            <q-table :rows="filteredProdutos" :columns="columns" row-key="id" :loading="loading" dense flat
+                :pagination="{ rowsPerPage: 10 }" separator="horizontal" class="full-width">
 
                 <template #body-cell-imagem="props">
                     <q-td :props="props" class="text-center">
                         <q-img v-if="props.row.imagem" :src="getImageUrl(props.row.imagem)" :alt="props.row.nome"
                             class="table-image rounded-borders" fit="cover" />
                         <q-icon v-else name="image_not_supported" size="24px" color="grey-5" />
+                    </q-td>
+                </template>
+
+                <template #body-cell-nome="props">
+                    <q-td :props="props">
+                        <div class="text-weight-medium">{{ props.row.nome }}</div>
+                        <div v-if="props.row.descricao" class="text-caption text-grey-7 ellipsis"
+                            style="max-width: 250px;">
+                            {{ props.row.descricao }}
+                        </div>
                     </q-td>
                 </template>
 
@@ -51,16 +64,15 @@
 
                 <template #body-cell-saldo_estoque="props">
                     <q-td :props="props" class="text-center">
-                        <q-badge :color="props.row.saldo_estoque > 0 ? 'positive' : 'negative'"
-                            class="text-body1 q-pa-sm">
-                            {{ props.row.saldo_estoque }} un
+                        <q-badge :color="getSaldoBadgeColor(props.row.saldo_estoque)" class="q-pa-xs text-caption">
+                            {{ props.row.saldo_estoque ?? 0 }} un
                         </q-badge>
                     </q-td>
                 </template>
 
                 <template #body-cell-ativo="props">
                     <q-td :props="props" class="text-center">
-                        <q-badge :color="props.row.ativo ? 'info' : 'grey-7'">
+                        <q-badge :color="props.row.ativo ? 'positive' : 'grey-7'">
                             {{ props.row.ativo ? 'Ativo' : 'Inativo' }}
                         </q-badge>
                     </q-td>
@@ -68,52 +80,65 @@
 
                 <template #body-cell-actions="props">
                     <q-td :props="props" class="text-center">
+                        <q-btn flat round color="secondary" icon="swap_horiz" size="sm"
+                            @click="openMovimentacao(props.row)">
+                            <q-tooltip>Movimentar Estoque</q-tooltip>
+                        </q-btn>
                         <q-btn flat round color="primary" icon="edit" size="sm" @click="openDialog(props.row)">
                             <q-tooltip>Editar</q-tooltip>
                         </q-btn>
                         <q-btn flat round color="negative" icon="delete" size="sm" @click="confirmDelete(props.row)">
                             <q-tooltip>Excluir</q-tooltip>
                         </q-btn>
-                        <q-btn flat round color="secondary" icon="swap_horiz" size="sm"
-                            @click="openMovimentacao(props.row)">
-                            <q-tooltip>Movimentar</q-tooltip>
-                        </q-btn>
                     </q-td>
+                </template>
+
+                <template #no-data="{ icon, message, filter }">
+                    <div class="full-width row flex-center text-grey-7 q-pa-lg">
+                        <q-icon size="2em" :name="filter ? 'search_off' : icon" />
+                        <span class="q-ml-sm">
+                            {{ filter ? 'Nenhum produto encontrado.' : message }}
+                        </span>
+                    </div>
                 </template>
             </q-table>
         </q-card>
 
         <!-- Diálogo de Cadastro / Edição -->
         <q-dialog v-model="dialog" persistent :maximized="$q.screen.lt.sm">
-            <q-card class="q-pa-sm q-pa-md-sm produto-dialog-card">
+            <q-card class="column no-wrap" :style="$q.screen.lt.sm ? '' : 'width: 550px; max-width: 90vw;'">
                 <q-card-section class="row items-center q-pb-none">
+                    <q-icon :name="isEditing ? 'edit' : 'shopping_bag'" color="primary" size="28px" class="q-mr-sm" />
                     <div class="text-h6">{{ isEditing ? 'Editar' : 'Novo' }} Produto</div>
                     <q-space />
-                    <q-btn icon="close" flat round dense v-close-popup />
+                    <q-btn icon="close" flat round dense v-close-popup :disable="saving" />
                 </q-card-section>
 
-                <q-card-section class="q-pt-md">
+                <q-card-section class="col scroll q-pt-md">
                     <q-form @submit="saveProduto" class="q-gutter-md">
                         <q-input v-model="form.nome" label="Nome do Produto *" outlined dense
-                            :rules="[val => !!val || 'Nome é obrigatório']" />
+                            :rules="[val => !!val || 'Nome é obrigatório']" :disable="saving" />
 
-                        <q-input v-model="form.descricao" label="Descrição" type="textarea" outlined dense rows="3" />
+                        <q-input v-model="form.descricao" label="Descrição" type="textarea" outlined dense rows="3"
+                            autogrow :disable="saving" />
 
                         <div class="row q-col-gutter-md">
                             <div class="col-12 col-sm-6">
                                 <q-input v-model.number="form.preco" label="Preço (R$) *" type="number" step="0.01"
                                     min="0" outlined dense prefix="R$"
-                                    :rules="[val => val >= 0 || 'Preço deve ser maior ou igual a zero']" />
+                                    :rules="[val => val >= 0 || 'Preço deve ser maior ou igual a zero']"
+                                    :disable="saving" />
                             </div>
                             <div class="col-12 col-sm-6 flex items-center">
-                                <q-toggle v-model="form.ativo" label="Produto Ativo" color="positive" />
+                                <q-toggle v-model="form.ativo" label="Produto Ativo" color="positive"
+                                    :disable="saving" />
                             </div>
                         </div>
 
                         <!-- Upload de Imagem -->
-                        <div class="q-mt-sm">
+                        <div>
                             <q-file v-model="form.imagemFile" label="Foto do Produto" outlined dense accept="image/*"
-                                clearable @rejected="onFileRejected">
+                                clearable :disable="saving" @rejected="onFileRejected">
                                 <template #prepend>
                                     <q-icon name="cloud_upload" />
                                 </template>
@@ -123,15 +148,20 @@
                             <div v-if="imagemPreview" class="q-mt-sm row items-center q-gutter-sm">
                                 <q-img :src="imagemPreview" class="preview-img rounded-borders" fit="cover" />
                                 <div class="text-caption text-grey-7">
-                                    {{ form.imagemFile ? 'Nova imagem selecionada' : 'Imagem atual' }}
+                                    {{ form.imagemFile ? 'Nova foto selecionada' : 'Foto atual' }}
                                 </div>
                             </div>
                         </div>
 
-                        <div class="row justify-end q-mt-md form-actions">
-                            <q-btn label="Cancelar" color="grey-7" flat v-close-popup class="q-mr-sm" />
-                            <q-btn :label="isEditing ? 'Salvar' : 'Cadastrar'" color="primary" type="submit"
-                                :loading="saving" />
+                        <div class="row justify-end q-col-gutter-sm q-mt-md">
+                            <div :class="$q.screen.lt.sm ? 'col-12' : ''">
+                                <q-btn label="Cancelar" color="grey-7" flat v-close-popup no-caps
+                                    :class="$q.screen.lt.sm ? 'full-width' : 'q-mr-sm'" :disable="saving" />
+                            </div>
+                            <div :class="$q.screen.lt.sm ? 'col-12' : ''">
+                                <q-btn :label="isEditing ? 'Salvar' : 'Cadastrar'" color="primary" type="submit" no-caps
+                                    :loading="saving" :class="$q.screen.lt.sm ? 'full-width' : ''" />
+                            </div>
                         </div>
                     </q-form>
                 </q-card-section>
@@ -142,11 +172,13 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { api } from '@/boot/axios'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 
 const $q = useQuasar()
+const router = useRouter()
 const queryClient = useQueryClient()
 
 const search = ref('')
@@ -167,14 +199,12 @@ const form = ref({ ...defaultForm })
 const columns = [
     { name: 'imagem', label: 'Imagem', field: 'imagem', align: 'center' },
     { name: 'nome', label: 'Nome', field: 'nome', align: 'left', sortable: true },
-    { name: 'descricao', label: 'Descrição', field: 'descricao', align: 'left' },
     { name: 'preco', label: 'Preço', field: 'preco', align: 'right', sortable: true },
     { name: 'saldo_estoque', label: 'Saldo', field: 'saldo_estoque', align: 'center', sortable: true },
     { name: 'ativo', label: 'Status', field: 'ativo', align: 'center', sortable: true },
     { name: 'actions', label: 'Ações', align: 'center' }
 ]
 
-// --- Helper de Normalização de Lista (DRF Paginação) ---
 const extractList = (data) => {
     if (!data) return []
     if (Array.isArray(data)) return data
@@ -182,7 +212,6 @@ const extractList = (data) => {
     return []
 }
 
-// --- Helper de URL de Imagem ---
 const getImageUrl = (path) => {
     if (!path) return ''
     if (path.startsWith('http://') || path.startsWith('https://')) return path
@@ -192,7 +221,13 @@ const getImageUrl = (path) => {
     return `${cleanBase}${cleanPath}`
 }
 
-// --- LEITURA ---
+const getSaldoBadgeColor = (saldo) => {
+    if (!saldo || saldo <= 0) return 'negative'
+    if (saldo <= 5) return 'warning'
+    return 'positive'
+}
+
+// LEITURA
 const { data: produtosData, isLoading: loading } = useQuery({
     queryKey: ['produtos'],
     queryFn: async () => (await api.get('/produtos/')).data
@@ -204,8 +239,8 @@ const filteredProdutos = computed(() => {
     if (!search.value) return produtos.value
     const term = search.value.toLowerCase().trim()
     return produtos.value.filter(p =>
-        p.nome.toLowerCase().includes(term) ||
-        (p.descricao && p.descricao.toLowerCase().includes(term))
+        p.nome?.toLowerCase().includes(term) ||
+        p.descricao?.toLowerCase().includes(term)
     )
 })
 
@@ -247,7 +282,7 @@ const onFileRejected = () => {
     $q.notify({ color: 'warning', message: 'Selecione um arquivo de imagem válido.', icon: 'warning' })
 }
 
-// --- ESCRITA ---
+// ESCRITA
 const { mutateAsync: saveProdutoMutation, isPending: saving } = useMutation({
     mutationFn: async ({ formValues, isEditing }) => {
         const formData = new FormData()
@@ -272,6 +307,7 @@ const { mutateAsync: saveProdutoMutation, isPending: saving } = useMutation({
     },
     onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['produtos'] })
+        queryClient.invalidateQueries({ queryKey: ['estoque', 'resumo'] })
     }
 })
 
@@ -295,21 +331,23 @@ const saveProduto = async () => {
     }
 }
 
-// --- EXCLUSÃO ---
+// EXCLUSÃO
 const { mutateAsync: deleteProdutoMutation } = useMutation({
     mutationFn: async (id) => {
         await api.delete(`/produtos/${id}/`)
     },
     onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['produtos'] })
+        queryClient.invalidateQueries({ queryKey: ['estoque', 'resumo'] })
     }
 })
 
 const confirmDelete = (produto) => {
     $q.dialog({
-        title: 'Confirmar exclusão',
+        title: 'Excluir Produto?',
         message: `Deseja realmente excluir o produto "${produto.nome}"?`,
-        cancel: true,
+        cancel: { label: 'Cancelar', flat: true, color: 'grey-7' },
+        ok: { label: 'Excluir', color: 'negative', unelevated: true },
         persistent: true
     }).onOk(async () => {
         try {
@@ -318,7 +356,7 @@ const confirmDelete = (produto) => {
         } catch (error) {
             $q.notify({
                 color: 'negative',
-                message: error.response?.data?.detail || 'Erro ao excluir produto',
+                message: error.response?.data?.detail || 'Erro ao excluir produto. Ele pode ter movimentações vinculadas.',
                 icon: 'error'
             })
         }
@@ -326,26 +364,14 @@ const confirmDelete = (produto) => {
 }
 
 const openMovimentacao = (produto) => {
-    $q.notify({ message: `Abrir movimentação para: ${produto.nome}`, color: 'secondary', icon: 'swap_horiz' })
+    router.push({ path: '/estoque/movimentacoes', query: { produto_id: produto.id } })
 }
 </script>
 
 <style scoped>
-.page-header {
-    min-height: 40px;
-}
-
-.new-order-btn {
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.responsive-table {
-    width: 100%;
-}
-
 .table-image {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border-radius: 6px;
     margin: 0 auto;
 }
@@ -355,53 +381,5 @@ const openMovimentacao = (produto) => {
     height: 60px;
     border-radius: 8px;
     border: 1px solid #e0e0e0;
-}
-
-.form-actions {
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-/* Dialog centralizado no desktop */
-.produto-dialog-card {
-    max-width: 600px;
-    width: 100%;
-    margin: auto;
-    max-height: 90vh;
-    overflow-y: auto;
-}
-
-@media (max-width: 599px) {
-    .page-header {
-        align-items: stretch;
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-
-    .page-header .text-h5 {
-        width: 100%;
-        font-size: 1.25rem;
-    }
-
-    .new-order-btn {
-        margin-left: 0;
-        width: 100%;
-    }
-
-    .form-actions {
-        justify-content: stretch;
-    }
-
-    .form-actions .q-btn {
-        flex: 1 1 100%;
-        margin: 0;
-    }
-
-    .produto-dialog-card {
-        max-width: 100%;
-        max-height: 100vh;
-        border-radius: 0;
-        margin: 0;
-    }
 }
 </style>

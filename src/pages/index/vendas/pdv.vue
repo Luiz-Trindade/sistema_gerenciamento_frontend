@@ -14,14 +14,12 @@
         </div>
 
         <div class="row q-col-gutter-md">
-            <!-- ============================== -->
-            <!-- COLUNA 1: Listagem de Produtos -->
-            <!-- ============================== -->
+            <!-- COLUNA 1: Catálogo de Produtos -->
             <div class="col-12 col-md-7">
                 <q-card bordered class="no-shadow">
                     <q-card-section class="q-pb-sm">
                         <q-input ref="searchRef" v-model="search" dense outlined autofocus
-                            placeholder="Buscar produto ou escanear código..." @keyup.enter="handleBarcodeEnter">
+                            placeholder="Buscar produto por nome ou código..." @keyup.enter="handleBarcodeEnter">
                             <template #prepend>
                                 <q-icon name="search" />
                             </template>
@@ -30,22 +28,22 @@
                             </template>
                         </q-input>
                         <div class="text-caption text-grey-6 q-mt-xs q-ml-xs">
-                            <q-icon name="keyboard_return" size="14px" /> Pressione
-                            <strong>Enter</strong> para adicionar o primeiro resultado
+                            <q-icon name="keyboard_return" size="14px" /> Pressione <strong>Enter</strong> para
+                            adicionar o primeiro resultado
                         </div>
                     </q-card-section>
 
                     <q-separator />
 
                     <q-card-section class="produtos-scroll q-pt-md">
-                        <!-- Empty state -->
+                        <!-- Empty State -->
                         <div v-if="filteredProdutos.length === 0" class="text-center text-grey-6 q-pa-xl">
                             <q-icon name="inventory_2" size="56px" class="q-mb-sm text-grey-4" />
                             <div class="text-subtitle1">Nenhum produto encontrado</div>
                             <div class="text-caption">Tente outro termo de busca</div>
                         </div>
 
-                        <!-- Grid de cards -->
+                        <!-- Grid de Produtos -->
                         <div v-else class="row q-col-gutter-sm">
                             <div v-for="prod in filteredProdutos" :key="prod.id" class="col-12 col-sm-6">
                                 <q-card flat bordered class="product-card cursor-pointer"
@@ -71,8 +69,7 @@
                                             <div class="text-h6 text-primary text-weight-bold">
                                                 R$ {{ formatCurrency(prod.preco) }}
                                             </div>
-                                            <q-badge :color="prod.saldo_estoque > 0 ? 'positive' : 'negative'"
-                                                class="q-pa-xs">
+                                            <q-badge :color="getSaldoBadgeColor(prod.saldo_estoque)" class="q-pa-xs">
                                                 {{ prod.saldo_estoque > 0 ? `Estoque: ${prod.saldo_estoque}` : `Sem
                                                 estoque` }}
                                             </q-badge>
@@ -85,12 +82,10 @@
                 </q-card>
             </div>
 
-            <!-- ============================== -->
-            <!-- COLUNA 2: Carrinho             -->
-            <!-- ============================== -->
+            <!-- COLUNA 2: Carrinho de Compras -->
             <div class="col-12 col-md-5 carrinho-col">
                 <q-card bordered class="no-shadow carrinho-card">
-                    <!-- Header com contador + limpar -->
+                    <!-- Header do Carrinho -->
                     <q-card-section class="q-py-sm">
                         <div class="row items-center no-wrap">
                             <q-icon name="shopping_cart" class="q-mr-sm" size="24px" />
@@ -106,11 +101,11 @@
                     </q-card-section>
                     <q-separator />
 
-                    <!-- Cliente com busca -->
+                    <!-- Seleção de Cliente -->
                     <q-card-section class="q-py-sm">
                         <q-select v-model="clienteId" :options="clientesFiltrados" use-input hide-selected fill-input
-                            input-debounce="0" @filter="filterClientes" emit-value map-options outlined dense clearable
-                            label="Cliente (Opcional)" placeholder="Consumidor Final">
+                            input-debounce="200" @filter="filterClientes" emit-value map-options outlined dense
+                            clearable label="Cliente (Opcional)" placeholder="Consumidor Final">
                             <template #prepend>
                                 <q-icon name="person" />
                             </template>
@@ -118,7 +113,7 @@
                     </q-card-section>
                     <q-separator />
 
-                    <!-- Itens do carrinho -->
+                    <!-- Lista de Itens do Carrinho -->
                     <q-card-section class="carrinho-items q-pt-sm">
                         <q-list v-if="carrinho.length > 0" separator>
                             <q-item v-for="(item, index) in carrinho" :key="item.produto_id" class="q-py-sm">
@@ -157,7 +152,7 @@
                         </div>
                     </q-card-section>
 
-                    <!-- Footer do carrinho -->
+                    <!-- Footer com Totais e Botão de Ação -->
                     <div class="carrinho-footer">
                         <q-separator />
                         <q-card-section class="q-py-sm">
@@ -178,44 +173,33 @@
             </div>
         </div>
 
-        <!-- ========================================= -->
-        <!-- DIÁLOGO DE FINALIZAÇÃO / PAGAMENTO        -->
-        <!-- ========================================= -->
+        <!-- DIÁLOGO DE FINALIZAÇÃO E PAGAMENTO -->
         <q-dialog v-model="dialogPagamento" persistent :maximized="$q.screen.lt.sm" transition-show="fade"
             transition-hide="fade">
             <q-card class="column no-wrap payment-card" :style="paymentCardStyle">
-                <!-- Header -->
                 <q-card-section class="row items-center no-wrap bg-positive text-white q-py-sm q-px-md">
                     <q-icon name="point_of_sale" size="28px" class="q-mr-sm" />
                     <div class="col">
                         <div class="text-h6">Finalizar Venda</div>
-                        <div class="text-caption" style="opacity: .85">
-                            Confirme o pagamento
-                        </div>
+                        <div class="text-caption" style="opacity: .85">Confirme os dados de recebimento</div>
                     </div>
                     <q-btn icon="close" flat round dense v-close-popup color="white" />
                 </q-card-section>
 
-                <!-- Corpo -->
                 <q-card-section class="col scroll q-pa-md">
-                    <!-- Total em destaque -->
-                    <div class="text-center q-py-md bg-grey-2 rounded-borders">
-                        <div class="text-caption text-grey-7 letter-spacing">
-                            TOTAL A PAGAR
-                        </div>
-                        <div class="text-h4 text-weight-bold text-primary">
+                    <div class="text-center q-py-md rounded-borders">
+                        <div class="text-caption text-grey-7 letter-spacing">TOTAL A PAGAR</div>
+                        <div class="text-h4 text-weight-bold">
                             R$ {{ formatCurrency(totalPedido) }}
                         </div>
                     </div>
 
-                    <!-- Toggle pagar agora -->
                     <div class="q-mt-lg">
                         <q-toggle v-model="pagarAgora" label="Receber pagamento agora" color="positive"
                             class="text-weight-medium" />
                     </div>
 
                     <template v-if="pagarAgora">
-                        <!-- Meio de pagamento -->
                         <q-select v-model="meioPagamentoSelecionado" :options="meioPagamentoOptions" emit-value
                             map-options outlined dense label="Meio de Pagamento *" class="q-mt-md">
                             <template #prepend>
@@ -223,7 +207,6 @@
                             </template>
                         </q-select>
 
-                        <!-- Dinheiro: valor recebido + troco -->
                         <template v-if="meioPagamentoSelecionado === 'dinheiro'">
                             <q-input v-model.number="valorRecebido" type="number" min="0" step="0.01" outlined dense
                                 prefix="R$" label="Valor recebido" class="q-mt-md">
@@ -237,7 +220,7 @@
                             </q-input>
 
                             <div v-if="valorRecebido >= totalPedido && totalPedido > 0"
-                                class="row items-center q-mt-md q-pa-md bg-green-1 rounded-borders">
+                                class="row items-center q-mt-md q-pa-md bg-green-2 rounded-borders">
                                 <q-icon name="savings" color="positive" size="24px" class="q-mr-sm" />
                                 <div class="text-subtitle2 text-grey-8">Troco:</div>
                                 <q-space />
@@ -249,7 +232,6 @@
                     </template>
                 </q-card-section>
 
-                <!-- Footer -->
                 <q-separator />
                 <q-card-section class="q-pa-md">
                     <div class="row q-col-gutter-sm justify-end">
@@ -277,19 +259,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 const $q = useQuasar()
 const queryClient = useQueryClient()
 
-// --- Estado ---
 const search = ref('')
 const searchRef = ref(null)
 const clienteId = ref(null)
 const carrinho = ref([])
 
-// Diálogo de pagamento
 const dialogPagamento = ref(false)
 const pagarAgora = ref(false)
 const meioPagamentoSelecionado = ref(null)
 const valorRecebido = ref(0)
 
-// --- Helper de Normalização de Lista (Suporte a Paginação do DRF) ---
 const extractList = (data) => {
     if (!data) return []
     if (Array.isArray(data)) return data
@@ -297,7 +276,7 @@ const extractList = (data) => {
     return []
 }
 
-// --- Vue Query ---
+// Queries
 const { data: produtosData } = useQuery({
     queryKey: ['produtos'],
     queryFn: async () => (await api.get('/produtos/')).data
@@ -311,10 +290,19 @@ const { data: clientesData } = useQuery({
 const produtos = computed(() => extractList(produtosData.value))
 const clientes = computed(() => extractList(clientesData.value))
 
-// --- Opções ---
-const clientesOptions = computed(() =>
-    clientes.value.map(c => ({ label: c.nome, value: c.id }))
-)
+const clientesOptions = computed(() => clientes.value.map(c => ({ label: c.nome, value: c.id })))
+const clientesFiltrados = ref([])
+
+const filterClientes = (val, update) => {
+    update(() => {
+        const term = (val || '').toLowerCase().trim()
+        if (!term) {
+            clientesFiltrados.value = clientesOptions.value
+            return
+        }
+        clientesFiltrados.value = clientesOptions.value.filter(opt => opt.label.toLowerCase().includes(term))
+    })
+}
 
 const meioPagamentoOptions = [
     { label: 'Dinheiro', value: 'dinheiro' },
@@ -324,13 +312,11 @@ const meioPagamentoOptions = [
     { label: 'Outro', value: 'outro' }
 ]
 
-// Estilo do card do dialog (desktop only — mobile usa `maximized`)
 const paymentCardStyle = computed(() => {
     if ($q.screen.lt.sm) return {}
     return { width: '500px', maxWidth: '90vw' }
 })
 
-// --- Helpers de Imagem e Moeda ---
 const getImageUrl = (path) => {
     if (!path) return ''
     if (path.startsWith('http://') || path.startsWith('https://')) return path
@@ -338,6 +324,12 @@ const getImageUrl = (path) => {
     const cleanBase = baseURL.endsWith('/') ? baseURL.slice(0, -1) : baseURL
     const cleanPath = path.startsWith('/') ? path : `/${path}`
     return `${cleanBase}${cleanPath}`
+}
+
+const getSaldoBadgeColor = (saldo) => {
+    if (!saldo || saldo <= 0) return 'negative'
+    if (saldo <= 5) return 'warning'
+    return 'positive'
 }
 
 const formatCurrency = (value) => {
@@ -350,7 +342,6 @@ const limparBusca = () => {
     searchRef.value?.focus()
 }
 
-// --- Filtros ---
 const filteredProdutos = computed(() => {
     const ativos = produtos.value.filter(p => p.ativo)
     if (!search.value) return ativos
@@ -358,34 +349,13 @@ const filteredProdutos = computed(() => {
     return ativos.filter(p => p.nome.toLowerCase().includes(term))
 })
 
-const clientesFiltrados = ref([])
-const filterClientes = (val, update) => {
-    update(() => {
-        const term = (val || '').toLowerCase().trim()
-        if (!term) {
-            clientesFiltrados.value = clientesOptions.value
-            return
-        }
-        clientesFiltrados.value = clientesOptions.value.filter(opt =>
-            opt.label.toLowerCase().includes(term)
-        )
-    })
-}
-
-// --- Computed ---
 const totalPedido = computed(() =>
-    carrinho.value.reduce((acc, item) => {
-        const qtd = item.quantidade || 0
-        return acc + (item.preco * qtd)
-    }, 0)
+    carrinho.value.reduce((acc, item) => acc + (item.preco * (item.quantidade || 0)), 0)
 )
 
-// ============================================================
-// Adicionar ao carrinho
-// ============================================================
 const adicionarAoCarrinho = (produto) => {
     if (produto.saldo_estoque <= 0) {
-        $q.notify({ color: 'warning', message: 'Produto sem estoque.', icon: 'warning' })
+        $q.notify({ color: 'warning', message: 'Produto sem estoque disponível.', icon: 'warning' })
         return
     }
     const existente = carrinho.value.find(i => i.produto_id === produto.id)
@@ -393,7 +363,7 @@ const adicionarAoCarrinho = (produto) => {
         if (existente.quantidade < produto.saldo_estoque) {
             existente.quantidade++
         } else {
-            $q.notify({ color: 'warning', message: 'Estoque insuficiente!', icon: 'warning' })
+            $q.notify({ color: 'warning', message: `Estoque máximo atingido (${produto.saldo_estoque} un).`, icon: 'warning' })
         }
     } else {
         carrinho.value.push({
@@ -406,17 +376,13 @@ const adicionarAoCarrinho = (produto) => {
     }
 }
 
-// ============================================================
-// Enter na busca (Leitor de código de barras)
-// ============================================================
 const handleBarcodeEnter = () => {
     const term = search.value.trim()
     if (!term) return
 
     const termLower = term.toLowerCase()
-    const exato = produtos.value.find(
-        p => p.ativo && p.nome.toLowerCase() === termLower
-    )
+    const exato = produtos.value.find(p => p.ativo && p.nome.toLowerCase() === termLower)
+
     if (exato) {
         adicionarAoCarrinho(exato)
         limparBusca()
@@ -431,18 +397,9 @@ const handleBarcodeEnter = () => {
 
     if (filteredProdutos.value.length === 0) {
         $q.notify({ color: 'warning', message: 'Nenhum produto encontrado.', icon: 'search_off' })
-    } else {
-        $q.notify({
-            color: 'info',
-            message: `${filteredProdutos.value.length} produtos encontrados. Clique em um para adicionar.`,
-            icon: 'info'
-        })
     }
 }
 
-// ============================================================
-// Operações no carrinho
-// ============================================================
 const alterarQuantidade = (index, delta) => {
     const item = carrinho.value[index]
     const novaQtd = (item.quantidade || 0) + delta
@@ -451,7 +408,7 @@ const alterarQuantidade = (index, delta) => {
         return
     }
     if (novaQtd > item.saldo_estoque) {
-        $q.notify({ color: 'warning', message: 'Estoque máximo atingido!', icon: 'warning' })
+        $q.notify({ color: 'warning', message: `Estoque disponível: ${item.saldo_estoque} un.`, icon: 'warning' })
         return
     }
     item.quantidade = novaQtd
@@ -467,11 +424,7 @@ const validarQuantidade = (index) => {
 
     if (q > item.saldo_estoque) {
         q = item.saldo_estoque
-        $q.notify({
-            color: 'warning',
-            message: `Estoque máximo: ${item.saldo_estoque}`,
-            icon: 'warning'
-        })
+        $q.notify({ color: 'warning', message: `Estoque máximo atingido: ${item.saldo_estoque}`, icon: 'warning' })
     }
     item.quantidade = q
 }
@@ -491,20 +444,18 @@ const confirmarLimparCarrinho = () => {
     $q.dialog({
         title: 'Limpar carrinho',
         message: 'Deseja remover todos os itens do pedido?',
-        cancel: true,
+        cancel: { label: 'Cancelar', flat: true, color: 'grey-7' },
+        ok: { label: 'Limpar', color: 'negative', unelevated: true },
         persistent: true
     }).onOk(() => {
         carrinho.value = []
     })
 }
 
-// ============================================================
-// Pagamento
-// ============================================================
 const abrirDialogPagamento = () => {
-    pagarAgora.value = false
-    meioPagamentoSelecionado.value = null
-    valorRecebido.value = 0
+    pagarAgora.value = true
+    meioPagamentoSelecionado.value = 'dinheiro'
+    valorRecebido.value = totalPedido.value
     dialogPagamento.value = true
 }
 
@@ -514,23 +465,20 @@ const { mutateAsync: criarVenda, isPending: saving } = useMutation({
         queryClient.invalidateQueries({ queryKey: ['produtos'] })
         queryClient.invalidateQueries({ queryKey: ['movimentacoes'] })
         queryClient.invalidateQueries({ queryKey: ['pedidos'] })
+        queryClient.invalidateQueries({ queryKey: ['vendas', 'resumo'] })
     }
 })
 
 const confirmarVenda = async () => {
     if (pagarAgora.value && !meioPagamentoSelecionado.value) {
-        $q.notify({
-            color: 'warning',
-            message: 'Selecione o meio de pagamento.',
-            icon: 'warning'
-        })
+        $q.notify({ color: 'warning', message: 'Selecione o meio de pagamento.', icon: 'warning' })
         return
     }
 
     try {
         const payload = {
             cliente: clienteId.value,
-            status: 'criado',
+            status: 'concluido',
             itens: carrinho.value.map(i => ({
                 produto_id: i.produto_id,
                 quantidade: i.quantidade
@@ -548,7 +496,6 @@ const confirmarVenda = async () => {
             timeout: 3000
         })
 
-        // Reset
         carrinho.value = []
         clienteId.value = null
         dialogPagamento.value = false
@@ -556,11 +503,7 @@ const confirmarVenda = async () => {
         limparBusca()
     } catch (error) {
         const data = error.response?.data
-        const errorMsg =
-            data?.detail ||
-            data?.itens?.[0] ||
-            data?.non_field_errors?.[0] ||
-            'Erro ao finalizar venda'
+        const errorMsg = data?.detail || data?.itens?.[0] || data?.non_field_errors?.[0] || 'Erro ao finalizar venda'
         $q.notify({ color: 'negative', message: errorMsg, icon: 'error', timeout: 6000 })
     }
 }
@@ -571,7 +514,6 @@ const confirmarVenda = async () => {
     min-height: 40px;
 }
 
-/* ====== Lista de produtos ====== */
 .produtos-scroll {
     max-height: 65vh;
     overflow-y: auto;
@@ -609,7 +551,6 @@ const confirmarVenda = async () => {
     min-height: 2.4em;
 }
 
-/* ====== Carrinho ====== */
 .carrinho-card {
     display: flex;
     flex-direction: column;
@@ -626,7 +567,6 @@ const confirmarVenda = async () => {
     margin-top: auto;
 }
 
-/* Input de quantidade compacto */
 .qty-input {
     width: 62px;
 }
@@ -643,12 +583,6 @@ const confirmarVenda = async () => {
     font-weight: 600;
 }
 
-.qty-input :deep(.q-field__marginal) {
-    height: 32px !important;
-    min-height: 32px !important;
-}
-
-/* ====== Sticky no desktop ====== */
 @media (min-width: 1024px) {
     .carrinho-col {
         position: sticky;
@@ -658,12 +592,10 @@ const confirmarVenda = async () => {
     }
 }
 
-/* ====== Dialog de pagamento ====== */
 .letter-spacing {
     letter-spacing: 1px;
 }
 
-/* Mobile: dialog full-screen sem bordas */
 @media (max-width: 599px) {
     .payment-card {
         border-radius: 0;
