@@ -20,8 +20,8 @@
         <!-- Barra de Ferramentas (Busca) -->
         <q-card class="q-mb-md no-shadow" bordered>
             <q-card-section class="row items-center q-py-sm">
-                <q-input v-model="filter" dense outlined placeholder="Buscar por nome, CPF/CNPJ, e-mail ou telefone..."
-                    class="col-12 col-sm-8 col-md-6">
+                <q-input v-model="filter" dense outlined
+                    placeholder="Buscar por nome, CPF/CNPJ, e-mails ou telefones..." class="col-12 col-sm-8 col-md-6">
                     <template v-slot:prepend>
                         <q-icon name="search" />
                     </template>
@@ -56,7 +56,6 @@
                                         </q-card-section>
                                         <q-separator class="q-my-sm" />
                                         <q-card-section class="q-pt-none q-pb-sm">
-                                            <!-- Popover: limite maior (400) e quebra de linha preservada -->
                                             <div class="text-body2" style="white-space: pre-wrap;">
                                                 {{ truncar(props.row.descricao, LIMITE_DESCRICAO_POPOVER) }}
                                             </div>
@@ -65,7 +64,6 @@
                                 </q-menu>
                             </q-btn>
                         </div>
-                        <!-- Trecho da tabela: limite curto (80) com reticências -->
                         <div v-if="props.row.descricao" class="text-caption text-grey-7 q-mt-xs">
                             {{ truncar(props.row.descricao, LIMITE_DESCRICAO_TABELA) }}
                         </div>
@@ -80,10 +78,51 @@
                     </q-td>
                 </template>
 
+                <!-- Coluna: Contatos Principais + Popover de Contatos Adicionais -->
                 <template v-slot:body-cell-contato="props">
                     <q-td :props="props">
-                        <div class="text-weight-medium">{{ props.row.email || '-' }}</div>
-                        <div class="text-caption text-grey-7">{{ props.row.telefone || '-' }}</div>
+                        <div class="row items-center no-wrap">
+                            <div>
+                                <div class="text-weight-medium">
+                                    {{ props.row.email_1 || props.row.email_2 || props.row.email_3 || '-' }}
+                                </div>
+                                <div class="text-caption text-grey-7">
+                                    {{ props.row.telefone_1 || props.row.telefone_2 || props.row.telefone_3 || '-' }}
+                                </div>
+                            </div>
+                            <q-btn v-if="temContatosExtras(props.row)" flat round dense size="sm" color="primary"
+                                icon="contacts" class="q-ml-sm">
+                                <q-tooltip>Ver todos os contatos</q-tooltip>
+                                <q-menu anchor="bottom left" self="top left" :offset="[0, 4]">
+                                    <q-card flat style="min-width: 260px;">
+                                        <q-card-section class="q-pa-sm">
+                                            <div class="text-subtitle2 text-weight-bold q-mb-xs">Contatos Cadastrados
+                                            </div>
+                                            <q-separator class="q-mb-sm" />
+
+                                            <!-- Telefones -->
+                                            <div class="text-caption text-weight-bold text-grey-8">Telefones:</div>
+                                            <div v-if="props.row.telefone_1" class="text-body2">1: {{
+                                                props.row.telefone_1 }}</div>
+                                            <div v-if="props.row.telefone_2" class="text-body2">2: {{
+                                                props.row.telefone_2 }}</div>
+                                            <div v-if="props.row.telefone_3" class="text-body2">3: {{
+                                                props.row.telefone_3 }}</div>
+
+                                            <!-- E-mails -->
+                                            <div class="text-caption text-weight-bold text-grey-8 q-mt-sm">E-mails:
+                                            </div>
+                                            <div v-if="props.row.email_1" class="text-body2">1: {{ props.row.email_1 }}
+                                            </div>
+                                            <div v-if="props.row.email_2" class="text-body2">2: {{ props.row.email_2 }}
+                                            </div>
+                                            <div v-if="props.row.email_3" class="text-body2">3: {{ props.row.email_3 }}
+                                            </div>
+                                        </q-card-section>
+                                    </q-card>
+                                </q-menu>
+                            </q-btn>
+                        </div>
                     </q-td>
                 </template>
 
@@ -120,7 +159,7 @@
 
         <!-- Diálogo de Cadastro/Edição -->
         <q-dialog v-model="dialog" persistent :maximized="$q.screen.lt.sm">
-            <q-card class="column no-wrap" :style="$q.screen.lt.sm ? '' : 'width: 600px; max-width: 90vw;'">
+            <q-card class="column no-wrap" :style="$q.screen.lt.sm ? '' : 'width: 680px; max-width: 90vw;'">
                 <q-card-section class="row items-center q-pb-none">
                     <q-icon :name="isEditing ? 'edit' : 'person_add'" color="primary" size="28px" class="q-mr-sm" />
                     <div class="text-h6">{{ isEditing ? 'Editar' : 'Novo' }} Cliente</div>
@@ -130,6 +169,7 @@
 
                 <q-card-section class="col scroll q-pt-md">
                     <q-form @submit="saveCliente" class="q-gutter-md">
+                        <!-- Identificação Básica -->
                         <q-input v-model="form.nome" label="Nome / Razão Social *" outlined dense
                             :rules="[val => !!val || 'Nome é obrigatório']" :disable="saving" />
 
@@ -144,18 +184,44 @@
                             </div>
                         </div>
 
+                        <!-- Telefones -->
+                        <div class="text-subtitle2 text-weight-bold text-primary q-mt-md">Telefones de Contato</div>
                         <div class="row q-col-gutter-md">
-                            <div class="col-12 col-sm-6">
-                                <q-input v-model="form.email" label="E-mail" type="email" outlined dense :rules="[
-                                    val => !val || /.+@.+\..+/.test(val) || 'E-mail inválido'
-                                ]" :disable="saving" />
+                            <div class="col-12 col-sm-4">
+                                <q-input v-model="form.telefone_1" label="Telefone Principal" outlined dense
+                                    mask="(##) #####-####" unmasked-value :disable="saving" />
                             </div>
-                            <div class="col-12 col-sm-6">
-                                <q-input v-model="form.telefone" label="Telefone / Celular" outlined dense
+                            <div class="col-12 col-sm-4">
+                                <q-input v-model="form.telefone_2" label="Telefone 2" outlined dense
+                                    mask="(##) #####-####" unmasked-value :disable="saving" />
+                            </div>
+                            <div class="col-12 col-sm-4">
+                                <q-input v-model="form.telefone_3" label="Telefone 3" outlined dense
                                     mask="(##) #####-####" unmasked-value :disable="saving" />
                             </div>
                         </div>
 
+                        <!-- E-mails -->
+                        <div class="text-subtitle2 text-weight-bold text-primary q-mt-md">E-mails de Contato</div>
+                        <div class="row q-col-gutter-md">
+                            <div class="col-12 col-sm-4">
+                                <q-input v-model="form.email_1" label="E-mail Principal" type="email" outlined dense
+                                    :rules="[val => !val || /.+@.+\..+/.test(val) || 'E-mail inválido']"
+                                    :disable="saving" />
+                            </div>
+                            <div class="col-12 col-sm-4">
+                                <q-input v-model="form.email_2" label="E-mail 2" type="email" outlined dense
+                                    :rules="[val => !val || /.+@.+\..+/.test(val) || 'E-mail inválido']"
+                                    :disable="saving" />
+                            </div>
+                            <div class="col-12 col-sm-4">
+                                <q-input v-model="form.email_3" label="E-mail 3" type="email" outlined dense
+                                    :rules="[val => !val || /.+@.+\..+/.test(val) || 'E-mail inválido']"
+                                    :disable="saving" />
+                            </div>
+                        </div>
+
+                        <!-- Descrição -->
                         <q-input v-model="form.descricao" label="Descrição" type="textarea" outlined dense rows="3"
                             autogrow :disable="saving" :maxlength="LIMITE_DESCRICAO_INPUT"
                             :hint="`Informações adicionais (${form.descricao?.length || 0}/${LIMITE_DESCRICAO_INPUT} caracteres).`" />
@@ -225,27 +291,22 @@ const queryClient = useQueryClient()
 // ==========================================
 // LIMITES DE CARACTERES
 // ==========================================
-const LIMITE_DESCRICAO_TABELA = 30      // trecho exibido abaixo do nome
-const LIMITE_DESCRICAO_POPOVER = 500    // texto exibido no popover
-const LIMITE_DESCRICAO_INPUT = 1500     // máximo aceito no campo (alinhado ao backend, se houver)
+const LIMITE_DESCRICAO_TABELA = 30
+const LIMITE_DESCRICAO_POPOVER = 500
+const LIMITE_DESCRICAO_INPUT = 1500
 
-/**
- * Trunca um texto em `limite` caracteres, adicionando "…" no final
- * se houver corte. Preserva palavras inteiras quando possível.
- */
 const truncar = (texto, limite) => {
     if (!texto) return ''
     const str = String(texto).trim()
     if (str.length <= limite) return str
 
-    // Corta no último espaço antes do limite para não quebrar palavra no meio
     const cortado = str.slice(0, limite)
     const ultimoEspaco = cortado.lastIndexOf(' ')
     const base = ultimoEspaco > limite * 0.6 ? cortado.slice(0, ultimoEspaco) : cortado
     return base.trimEnd() + '…'
 }
 
-// --- Estado Local (Apenas para controle de UI) ---
+// --- Estado Local (UI) ---
 const filter = ref('')
 const dialog = ref(false)
 const isEditing = ref(false)
@@ -255,11 +316,15 @@ const clienteParaExcluir = ref(null)
 const defaultForm = {
     id: null,
     nome: '',
-    email: '',
-    telefone: '',
-    descricao: '',
     cpf: '',
     cnpj: '',
+    telefone_1: '',
+    telefone_2: '',
+    telefone_3: '',
+    email_1: '',
+    email_2: '',
+    email_3: '',
+    descricao: '',
     ativo: true
 }
 const form = ref({ ...defaultForm })
@@ -268,7 +333,7 @@ const form = ref({ ...defaultForm })
 const columns = [
     { name: 'nome', label: 'Nome / Razão Social', field: 'nome', align: 'left', sortable: true },
     { name: 'documento', label: 'CPF / CNPJ', field: 'cpf', align: 'left', sortable: false },
-    { name: 'contato', label: 'Contato', field: 'email', align: 'left' },
+    { name: 'contato', label: 'Contato Principal', align: 'left' },
     { name: 'status', label: 'Status', field: 'ativo', align: 'center', sortable: true },
     { name: 'acoes', label: 'Ações', align: 'center' }
 ]
@@ -287,6 +352,15 @@ const {
     }
 })
 
+// --- Helper de Contatos Extras ---
+const temContatosExtras = (cliente) => {
+    const totalContatos = [
+        cliente.telefone_1, cliente.telefone_2, cliente.telefone_3,
+        cliente.email_1, cliente.email_2, cliente.email_3
+    ].filter(Boolean).length
+    return totalContatos > 1
+}
+
 // --- Computed (Filtro) ---
 const filteredClientes = computed(() => {
     const lista = clientes.value || []
@@ -295,10 +369,14 @@ const filteredClientes = computed(() => {
     const term = filter.value.toLowerCase()
     return lista.filter(c =>
         c.nome?.toLowerCase().includes(term) ||
-        c.email?.toLowerCase().includes(term) ||
         c.cpf?.toLowerCase().includes(term) ||
         c.cnpj?.toLowerCase().includes(term) ||
-        c.telefone?.toLowerCase().includes(term) ||
+        c.email_1?.toLowerCase().includes(term) ||
+        c.email_2?.toLowerCase().includes(term) ||
+        c.email_3?.toLowerCase().includes(term) ||
+        c.telefone_1?.toLowerCase().includes(term) ||
+        c.telefone_2?.toLowerCase().includes(term) ||
+        c.telefone_3?.toLowerCase().includes(term) ||
         c.descricao?.toLowerCase().includes(term)
     )
 })
@@ -310,11 +388,15 @@ const openDialog = (cliente = null) => {
         form.value = {
             id: cliente.id,
             nome: cliente.nome ?? '',
-            email: cliente.email ?? '',
-            telefone: cliente.telefone ?? '',
-            descricao: cliente.descricao ?? '',
             cpf: cliente.cpf ?? '',
             cnpj: cliente.cnpj ?? '',
+            telefone_1: cliente.telefone_1 ?? '',
+            telefone_2: cliente.telefone_2 ?? '',
+            telefone_3: cliente.telefone_3 ?? '',
+            email_1: cliente.email_1 ?? '',
+            email_2: cliente.email_2 ?? '',
+            email_3: cliente.email_3 ?? '',
+            descricao: cliente.descricao ?? '',
             ativo: cliente.ativo ?? true
         }
     } else {
@@ -336,10 +418,14 @@ const { mutateAsync: saveClienteMutation, isPending: saving } = useMutation({
     mutationFn: async ({ formData, isEditing }) => {
         const payload = {
             ...formData,
-            email: formData.email || null,
             cpf: formData.cpf || null,
             cnpj: formData.cnpj || null,
-            telefone: formData.telefone || null,
+            telefone_1: formData.telefone_1 || null,
+            telefone_2: formData.telefone_2 || null,
+            telefone_3: formData.telefone_3 || null,
+            email_1: formData.email_1 || null,
+            email_2: formData.email_2 || null,
+            email_3: formData.email_3 || null,
             descricao: formData.descricao || null
         }
 
@@ -416,7 +502,6 @@ const deletarCliente = async () => {
     white-space: normal;
 }
 
-/* Popover de descrição: limita a largura e adiciona leve sombra */
 .cliente-descricao-menu {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
     border-radius: 8px;
