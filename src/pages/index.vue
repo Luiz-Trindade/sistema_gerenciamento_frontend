@@ -110,6 +110,13 @@
                             <q-item-section avatar><q-icon name="people" /></q-item-section>
                             <q-item-section class="text-weight-medium">Clientes</q-item-section>
                         </q-item>
+
+                        <!-- Nova Aba: Relatórios IA -->
+                        <q-item clickable v-ripple to="/relatorios-ia" exact
+                            active-class="text-primary bg-primary/10 rounded-borders">
+                            <q-item-section avatar><q-icon name="auto_awesome" /></q-item-section>
+                            <q-item-section class="text-weight-medium">Relatórios IA</q-item-section>
+                        </q-item>
                     </q-list>
                 </q-scroll-area>
 
@@ -156,7 +163,7 @@
                 <q-route-tab name="estoque" icon="inventory_2" label="Estoque" to="/estoque" />
                 <q-route-tab name="vendas" icon="point_of_sale" label="Vendas" to="/vendas" />
                 <q-route-tab name="clientes" icon="people" label="Clientes" to="/clientes" />
-                <!-- <q-route-tab name="configuracoes" icon="settings" label="Config" to="/config" /> -->
+                <q-route-tab name="relatorios-ia" icon="auto_awesome" label="IA" to="/relatorios-ia" />
             </q-tabs>
         </q-footer>
 
@@ -211,7 +218,6 @@ const { data: userData } = useQuery({
         return response.data
     },
     staleTime: 1000 * 60 * 10,
-    // Não dispara a query na tela de login (usuário deslogado)
     enabled: computed(() => route.path !== '/login')
 })
 
@@ -231,7 +237,6 @@ const userIniciais = computed(() => {
     const last = (u.last_name || '').trim()
     const letras = (first[0] || '') + (last[0] || '')
     if (letras) return letras.toUpperCase()
-    // Fallback: iniciais do username ou email
     const base = u.username || u.email || ''
     return base.slice(0, 2).toUpperCase() || 'U'
 })
@@ -270,8 +275,9 @@ const routeGroups = {
     '/estoque': 1, '/estoque/produtos': 1, '/estoque/movimentacoes': 1,
     '/vendas': 2, '/vendas/pdv': 2, '/vendas/pedidos': 2, '/vendas/contas': 2,
     '/clientes': 3,
-    '/config': 4,
-    '/login': 5
+    '/relatorios-ia': 4,
+    '/config': 5,
+    '/login': 6
 }
 
 const transitionName = ref('q-transition--fade')
