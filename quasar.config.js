@@ -107,6 +107,9 @@ export default defineConfig((/* ctx */) => {
                 json.theme_color = '#045df1'
                 json.lang = 'pt-BR'
                 json.dir = 'ltr'
+
+                delete json.display_override
+
                 return json
             },
         },
