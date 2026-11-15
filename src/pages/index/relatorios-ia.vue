@@ -9,11 +9,31 @@
                     <span class="text-subtitle2 text-weight-medium ellipsis">
                         Assistente de Relatórios IA
                     </span>
+                    <q-badge color="deep-purple-6" text-color="white" class="q-ml-xs text-weight-bold"
+                        style="font-size: 10px;">
+                        ERP + KDD
+                    </q-badge>
                 </div>
-                <q-btn v-if="messages.length > 1" flat dense size="sm" color="grey-6" icon="delete_sweep"
-                    :label="$q.screen.xs ? '' : 'Limpar'" no-caps :disable="isTyping" @click="clearChat">
-                    <q-tooltip v-if="$q.screen.xs">Limpar conversa</q-tooltip>
-                </q-btn>
+
+                <div class="row items-center q-gutter-xs no-wrap">
+                    <!-- Botão de Resumo Metodológico KDD -->
+                    <q-btn flat dense size="sm" color="deep-purple-6" icon="hub"
+                        :label="$q.screen.xs ? 'KDD' : 'Pipeline KDD'" no-caps @click="kddInfoDialog = true">
+                        <q-tooltip>Ver arquitetura KDD e bases Big Data integradas</q-tooltip>
+                    </q-btn>
+
+                    <!-- Exportar Relatório -->
+                    <q-btn v-if="messages.length > 1" flat dense size="sm" color="primary" icon="download"
+                        :label="$q.screen.xs ? '' : 'Exportar'" no-caps :disable="isTyping" @click="exportChatMarkdown">
+                        <q-tooltip>Baixar conversa em Markdown (.md)</q-tooltip>
+                    </q-btn>
+
+                    <!-- Limpar Conversa -->
+                    <q-btn v-if="messages.length > 1" flat dense size="sm" color="grey-6" icon="delete_sweep"
+                        :label="$q.screen.xs ? '' : 'Limpar'" no-caps :disable="isTyping" @click="clearChat">
+                        <q-tooltip v-if="$q.screen.xs">Limpar conversa</q-tooltip>
+                    </q-btn>
+                </div>
             </q-card-section>
 
             <q-separator />
@@ -34,7 +54,13 @@
                         </template>
 
                         <!-- Mensagem do Usuário -->
-                        <div v-if="msg.sent" class="text-body2 user-message">{{ msg.text }}</div>
+                        <div v-if="msg.sent" class="text-body2 user-message">
+                            <q-badge v-if="msg.category === 'kdd'" color="amber-9" text-color="white"
+                                class="q-mr-xs vertical-middle" style="font-size: 9px;">
+                                KDD
+                            </q-badge>
+                            <span>{{ msg.text }}</span>
+                        </div>
 
                         <!-- Resposta da IA -->
                         <div v-else class="ai-message-wrapper">
@@ -45,19 +71,46 @@
                                 class="q-mt-sm q-mt-sm-md chart-card"
                                 :class="$q.dark.isActive ? 'bg-grey-10' : 'bg-white'">
                                 <q-card-section class="q-pa-xs q-pa-sm-md">
-                                    <div class="row items-center no-wrap q-mb-xs q-mb-sm-sm">
-                                        <q-icon :name="getChartIcon(msg.chart)" color="primary" size="18px"
-                                            class="q-mr-xs col-auto" />
-                                        <div class="text-caption text-sm-subtitle2 text-weight-bold ellipsis">
-                                            {{ msg.chartData.title || 'Análise Gráfica' }}
+                                    <div
+                                        class="row items-center justify-between no-wrap q-mb-xs q-mb-sm-sm q-gutter-xs">
+                                        <div class="row items-center no-wrap ellipsis col">
+                                            <q-icon :name="getChartIcon(getEffectiveChartType(msg, index))"
+                                                color="primary" size="18px" class="q-mr-xs col-auto" />
+                                            <div class="text-caption text-sm-subtitle2 text-weight-bold ellipsis">
+                                                {{ msg.chartData.title || 'Análise Gráfica' }}
+                                            </div>
+                                        </div>
+
+                                        <!-- Controles do Gráfico: Alternar Tipo e Baixar PNG -->
+                                        <div v-if="canSwitchChartType(msg.chart)"
+                                            class="row items-center no-wrap col-auto q-gutter-xs">
+                                            <q-btn flat dense round size="xs" icon="bar_chart"
+                                                :color="getEffectiveChartType(msg, index) === 'bar' ? 'primary' : 'grey-6'"
+                                                @click="setChartOverride(index, 'bar')">
+                                                <q-tooltip>Barras verticais</q-tooltip>
+                                            </q-btn>
+                                            <q-btn flat dense round size="xs" icon="leaderboard"
+                                                :color="getEffectiveChartType(msg, index) === 'horizontal_bar' ? 'primary' : 'grey-6'"
+                                                @click="setChartOverride(index, 'horizontal_bar')">
+                                                <q-tooltip>Barras horizontais</q-tooltip>
+                                            </q-btn>
+                                            <q-btn flat dense round size="xs" icon="donut_large"
+                                                :color="getEffectiveChartType(msg, index) === 'doughnut' ? 'primary' : 'grey-6'"
+                                                @click="setChartOverride(index, 'doughnut')">
+                                                <q-tooltip>Rosca</q-tooltip>
+                                            </q-btn>
+                                            <q-btn flat dense round size="xs" icon="image" color="grey-6"
+                                                @click="downloadChartImage(index, msg.chartData.title)">
+                                                <q-tooltip>Salvar gráfico (PNG)</q-tooltip>
+                                            </q-btn>
                                         </div>
                                     </div>
 
-                                    <div class="chart-container"
-                                        :style="{ height: getChartHeight(msg.chart, msg.chartData) }">
-                                        <component :is="resolveChartComponent(msg.chart)"
-                                            :data="buildChartData(msg.chart, msg.chartData)"
-                                            :options="buildChartOptions(msg.chart, msg.chartData)" />
+                                    <div :ref="(el) => setChartContainerRef(el, index)" class="chart-container"
+                                        :style="{ height: getChartHeight(getEffectiveChartType(msg, index), msg.chartData) }">
+                                        <component :is="resolveChartComponent(getEffectiveChartType(msg, index))"
+                                            :data="buildChartData(getEffectiveChartType(msg, index), msg.chartData)"
+                                            :options="buildChartOptions(getEffectiveChartType(msg, index), msg.chartData)" />
                                     </div>
                                 </q-card-section>
                             </q-card>
@@ -74,10 +127,10 @@
                     </q-chat-message>
                 </div>
 
-                <!-- Indicador de Carregamento -->
+                <!-- Indicador de Carregamento Dinâmico -->
                 <div v-if="isTyping" class="row items-center q-ml-sm q-ml-sm-md q-my-sm text-grey-6">
                     <q-spinner-dots size="1.8em" color="primary" class="q-mr-xs" />
-                    <span class="text-caption">Analisando dados do ERP...</span>
+                    <span class="text-caption">{{ currentLoadingStep }}</span>
                 </div>
             </q-card-section>
 
@@ -85,11 +138,21 @@
 
             <!-- Entrada Fixa -->
             <q-card-section class="col-auto q-pa-xs q-pa-sm-sm input-area">
-                <!-- Prompts Sugeridos em linha única com scroll horizontal -->
-                <div class="row no-wrap scroll q-gutter-xs q-mb-xs quick-prompts-bar">
-                    <q-btn v-for="(prompt, idx) in quickPrompts" :key="idx" outline dense size="sm" color="primary"
-                        :label="prompt" no-caps no-wrap class="q-px-sm quick-prompt-btn" :disable="isTyping"
-                        @click="sendQuickPrompt(prompt)" />
+                <!-- Seletor de Categoria + Prompts Sugeridos -->
+                <div class="row items-center no-wrap q-gutter-xs q-mb-xs">
+                    <q-btn-toggle v-model="promptCategory" dense no-caps unelevated size="xs"
+                        toggle-color="deep-purple-6" :color="$q.dark.isActive ? 'grey-8' : 'grey-3'"
+                        :text-color="$q.dark.isActive ? 'grey-3' : 'grey-8'" class="col-auto category-toggle" :options="[
+                            { label: 'KDD', value: 'kdd', icon: 'hub' },
+                            { label: 'ERP', value: 'erp', icon: 'store' }
+                        ]" />
+
+                    <div class="row no-wrap scroll q-gutter-xs quick-prompts-bar col">
+                        <q-btn v-for="(item, idx) in activeQuickPrompts" :key="`${promptCategory}-${idx}`" outline dense
+                            size="sm" :color="promptCategory === 'kdd' ? 'deep-purple-6' : 'primary'" :icon="item.icon"
+                            :label="item.label" no-caps no-wrap class="q-px-sm quick-prompt-btn" :disable="isTyping"
+                            @click="sendQuickPrompt(item)" />
+                    </div>
                 </div>
 
                 <!-- Campo de Digitação -->
@@ -98,19 +161,106 @@
                         class="col" :placeholder="inputPlaceholder" :disable="isTyping"
                         @keydown.enter.exact.prevent="sendMessage">
                         <template v-if="$q.screen.gt.xs" #prepend>
-                            <q-icon name="auto_awesome" color="primary" size="18px" />
+                            <q-icon :name="promptCategory === 'kdd' ? 'hub' : 'auto_awesome'"
+                                :color="promptCategory === 'kdd' ? 'deep-purple-6' : 'primary'" size="18px" />
                         </template>
                     </q-input>
-                    <q-btn color="primary" icon="send" unelevated :round="$q.screen.xs" :dense="$q.screen.xs"
-                        class="send-btn" :disable="!newMessage.trim() || isTyping" @click="sendMessage" />
+                    <q-btn :color="promptCategory === 'kdd' ? 'deep-purple-6' : 'primary'" icon="send" unelevated
+                        :round="$q.screen.xs" :dense="$q.screen.xs" class="send-btn"
+                        :disable="!newMessage.trim() || isTyping" @click="sendMessage" />
                 </div>
             </q-card-section>
         </q-card>
+
+        <!-- Modal Informativo do Pipeline KDD -->
+        <q-dialog v-model="kddInfoDialog">
+            <q-card style="max-width: 560px; width: 95vw;">
+                <q-card-section class="row items-center justify-between q-pb-xs">
+                    <div class="row items-center q-gutter-xs">
+                        <q-icon name="hub" color="deep-purple-6" size="22px" />
+                        <span class="text-subtitle1 text-weight-bold">Arquitetura Big Data & KDD</span>
+                    </div>
+                    <q-btn icon="close" flat round dense v-close-popup />
+                </q-card-section>
+
+                <q-separator />
+
+                <q-card-section class="q-gutter-sm text-body2">
+                    <p class="q-mb-xs">
+                        O assistente cruza os dados transacionais do <strong>Simples Gestão</strong> com a
+                        <strong>Camada Gold</strong> minerada offline a partir de bases públicas governamentais:
+                    </p>
+
+                    <q-list bordered separator dense class="rounded-borders">
+                        <q-item>
+                            <q-item-section avatar>
+                                <q-icon name="filter_alt" color="primary" />
+                            </q-item-section>
+                            <q-item-section>
+                                <q-item-label class="text-weight-bold">1. Seleção & Pré-processamento (Bronze →
+                                    Silver)</q-item-label>
+                                <q-item-label caption>
+                                    Leitura em chunks de <strong>40,5 milhões de CNPJs</strong> (Receita Federal),
+                                    <strong>1,36 milhão</strong> de registros da ANVISA e séries históricas do BCB/IBGE.
+                                </q-item-label>
+                            </q-item-section>
+                        </q-item>
+
+                        <q-item>
+                            <q-item-section avatar>
+                                <q-icon name="shopping_basket" color="teal" />
+                            </q-item-section>
+                            <q-item-section>
+                                <q-item-label class="text-weight-bold">2. Regras de Associação (Apriori)</q-item-label>
+                                <q-item-label caption>
+                                    Identifica itens comprados juntos (Suporte, Confiança e Lift) para sugerir combos de
+                                    venda.
+                                </q-item-label>
+                            </q-item-section>
+                        </q-item>
+
+                        <q-item>
+                            <q-item-section avatar>
+                                <q-icon name="groups" color="deep-purple-6" />
+                            </q-item-section>
+                            <q-item-section>
+                                <q-item-label class="text-weight-bold">3. Clusterização B2B (K-Means)</q-item-label>
+                                <q-item-label caption>
+                                    Segmenta <strong>12.396 empresas ativas</strong> no Pará por CNAE e tempo de
+                                    operação para
+                                    prospecção.
+                                </q-item-label>
+                            </q-item-section>
+                        </q-item>
+
+                        <q-item>
+                            <q-item-section avatar>
+                                <q-icon name="account_balance" color="amber-9" />
+                            </q-item-section>
+                            <q-item-section>
+                                <q-item-label class="text-weight-bold">4. Política de Crédito (Árvore de Decisão +
+                                    BCB)</q-item-label>
+                                <q-item-label caption>
+                                    Compara inadimplência interna com a média PJ do Banco Central e define travas de
+                                    prazo.
+                                </q-item-label>
+                            </q-item-section>
+                        </q-item>
+                    </q-list>
+                </q-card-section>
+
+                <q-card-actions align="right">
+                    <q-btn flat label="Fechar" color="grey-7" no-caps v-close-popup />
+                    <q-btn unelevated label="Executar Diagnóstico KDD" color="deep-purple-6" icon="play_arrow" no-caps
+                        v-close-popup @click="runFullKddDiagnostic" />
+                </q-card-actions>
+            </q-card>
+        </q-dialog>
     </q-page>
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, watch, onUnmounted } from 'vue'
 import { useQuasar, copyToClipboard } from 'quasar'
 import { api } from '@/boot/axios'
 
@@ -119,10 +269,16 @@ import BarChart from '@/components/BarChart.vue'
 import DoughnutChart from '@/components/DoughnutChart.vue'
 
 const $q = useQuasar()
+const STORAGE_KEY = 'simples_gestao_ia_chat_v1'
+
 const messagesContainer = ref(null)
 const newMessage = ref('')
 const isTyping = ref(false)
 const copiedIndex = ref(null)
+const kddInfoDialog = ref(false)
+const promptCategory = ref('kdd')
+const chartTypeOverrides = ref({})
+const chartContainers = ref({})
 
 // Calcula a altura exata descontando automaticamente Header + Footer do QLayout
 const layoutOffset = ref(0)
@@ -149,8 +305,8 @@ const cardStyle = computed(() => {
 
 const inputPlaceholder = computed(() =>
     $q.screen.xs
-        ? 'Pergunte sobre vendas, estoque ou demanda...'
-        : 'Pergunte sobre vendas, estoque, demanda ou parcelas... (Shift+Enter para nova linha)'
+        ? 'Pergunte sobre ERP, KDD, leads B2B...'
+        : 'Pergunte sobre vendas, KDD (Receita Federal, BCB, Apriori) ou estoque... (Enter para enviar)'
 )
 
 const getCurrentTime = () =>
@@ -158,33 +314,239 @@ const getCurrentTime = () =>
 
 const createWelcomeMessage = () => ({
     sent: false,
-    text: '<p>Olá! Sou o seu assistente de relatórios inteligente.</p><p>Como posso ajudar com a gestão de <strong>vendas</strong>, <strong>estoque</strong>, <strong>previsão de demanda</strong> ou <strong>financeiro</strong> hoje?</p>',
+    text: '<p>Olá! Sou o seu assistente de relatórios inteligente conectado ao <strong>ERP Simples Gestão</strong> e à base minerada de <strong>Big Data & KDD</strong>.</p><p>Escolha um atalho abaixo (<strong>KDD</strong> ou <strong>ERP</strong>) ou digite sua pergunta para cruzar vendas, crédito, combos Apriori e leads B2B.</p>',
     chart: null,
     chartData: null,
     stamp: getCurrentTime()
 })
 
-const messages = ref([createWelcomeMessage()])
+const loadInitialMessages = () => {
+    try {
+        const saved = sessionStorage.getItem(STORAGE_KEY)
+        if (saved) {
+            const parsed = JSON.parse(saved)
+            if (Array.isArray(parsed) && parsed.length) return parsed
+        }
+    } catch {
+        // Ignora erro de storage
+    }
+    return [createWelcomeMessage()]
+}
 
-const quickPrompts = [
-    'Previsão de demanda e ações',
-    'Resumo de vendas do mês',
-    'Produtos com estoque crítico',
-    'Previsão de recebimentos'
-]
+const messages = ref(loadInitialMessages())
+
+watch(
+    messages,
+    (val) => {
+        try {
+            sessionStorage.setItem(STORAGE_KEY, JSON.stringify(val.slice(-30)))
+        } catch {
+            // Ignora quota excedida
+        }
+    },
+    { deep: true }
+)
 
 // ==============================================================================
-// CONFIGURAÇÃO DOS GRÁFICOS (VUE-CHARTJS)
+// PROMPTS RÁPIDOS (KDD BIG DATA vs. ERP OPERACIONAL)
 // ==============================================================================
-const CHART_COLORS = [
-    '#1976D2',
-    '#4FC08D',
-    '#F2C037',
-    '#E53935',
-    '#9C27B0',
-    '#26A69A',
-    '#607D8B'
+const kddPrompts = [
+    {
+        label: 'Diagnóstico Completo ERP × KDD',
+        icon: 'insights',
+        prompt:
+            'Faça um diagnóstico completo cruzando minhas vendas dos últimos 365 dias e minhas contas a receber com os dados externos do KDD (Receita Federal, ANVISA e Banco Central). Mostre o volume de dados analisados, gere um gráfico da minha situação financeira e liste leads B2B reais e combos de produtos.'
+    },
+    {
+        label: 'Leads B2B no Pará (Receita Federal)',
+        icon: 'domain_add',
+        prompt:
+            'Com base na mineração da Receita Federal no Pará (K-Means), quantos potenciais compradores B2B e concorrentes existem no meu setor, quais segmentos dominam e quais empresas reais devo prospectar primeiro? Gere um gráfico dos segmentos.'
+    },
+    {
+        label: 'Combos e Cestas (Apriori)',
+        icon: 'shopping_basket',
+        prompt:
+            'Analise os produtos mais vendidos dos últimos 365 dias e cruze com as regras de associação (Apriori) do KDD para recomendar kits promocionais com maior Lift e Confiança. Mostre um gráfico do ranking de produtos.'
+    },
+    {
+        label: 'Risco de Crédito vs. Banco Central',
+        icon: 'account_balance',
+        prompt:
+            'Compare minhas parcelas vencidas e a receber com a taxa oficial de inadimplência PJ e juros de capital de giro do Banco Central (KDD) e explique as regras da árvore de decisão para vendas a prazo.'
+    }
 ]
+
+const erpPrompts = [
+    {
+        label: 'Previsão de demanda (30d)',
+        icon: 'trending_up',
+        prompt: 'Qual a previsão de demanda para os próximos 30 dias usando base de 365 dias e o que devo fazer agora?'
+    },
+    {
+        label: 'Resumo de vendas (365d)',
+        icon: 'payments',
+        prompt: 'Qual o resumo de vendas e principais clientes dos últimos 365 dias?'
+    },
+    {
+        label: 'Produtos com estoque crítico',
+        icon: 'warning_amber',
+        prompt: 'Quais produtos estão com estoque crítico ou zerado no momento?'
+    },
+    {
+        label: 'Contas a receber e atrasos',
+        icon: 'receipt_long',
+        prompt: 'Como está a situação das contas a receber e parcelas vencidas?'
+    }
+]
+
+const activeQuickPrompts = computed(() =>
+    promptCategory.value === 'kdd' ? kddPrompts : erpPrompts
+)
+
+// Indicador de carregamento rotativo
+const loadingSteps = [
+    'Consultando dados do ERP e Camada Gold KDD...',
+    'Cruzando indicadores da Receita Federal e Banco Central...',
+    'Processando regras Apriori e estruturando visualização...'
+]
+const loadingStepIndex = ref(0)
+let loadingTimer = null
+
+const currentLoadingStep = computed(() => loadingSteps[loadingStepIndex.value])
+
+watch(isTyping, (typing) => {
+    if (typing) {
+        loadingStepIndex.value = 0
+        loadingTimer = setInterval(() => {
+            loadingStepIndex.value = (loadingStepIndex.value + 1) % loadingSteps.length
+        }, 2400)
+    } else if (loadingTimer) {
+        clearInterval(loadingTimer)
+        loadingTimer = null
+    }
+})
+
+onUnmounted(() => {
+    if (loadingTimer) clearInterval(loadingTimer)
+})
+
+// ==============================================================================
+// MOTOR SEMÂNTICO DE CORES E CONFIGURAÇÃO DOS GRÁFICOS (VUE-CHARTJS)
+// ==============================================================================
+const SEMANTIC_COLORS = {
+    critical: '#E53935',   // Vermelho: vencido, zerado, crítico, inadimplência ERP, ruptura
+    warning: '#FB8C00',    // Laranja/Âmbar: atenção, baixo giro, pendente, juros, excesso
+    positive: '#10B981',   // Verde esmeralda: a receber, em dia, pago, saudável, faturamento
+    benchmark: '#6366F1',  // Índigo/Roxo: BCB, mercado, média nacional, ANVISA, Receita Federal
+    expansion: '#00897B',  // Teal: leads B2B, varejistas, supermercados, prospecção
+    neutral: '#64748B'     // Cinza ardósia: inativo, outros
+}
+
+// Paleta harmônica para rankings neutros (nomes de produtos/clientes sem status)
+const NEUTRAL_RANKING_PALETTE = [
+    '#1976D2', // Azul primário
+    '#00897B', // Verde-azulado (Teal)
+    '#5E35B1', // Roxo profundo
+    '#0288D1', // Azul oceano
+    '#3949AB', // Índigo
+    '#00ACC1', // Ciano
+    '#43A047', // Verde médio
+    '#6D4C41', // Marrom café
+    '#546E7A'  // Azul acinzentado
+]
+
+const KEYWORD_RULES = [
+    // 1. Benchmarks externos / KDD (avaliados antes para "Inadimplência BCB" ficar roxo/índigo e contrastar com ERP vermelho)
+    {
+        color: SEMANTIC_COLORS.benchmark,
+        keywords: [
+            'bcb', 'banco central', 'mercado', 'media nacional', 'media setorial',
+            'referencia', 'benchmark', 'kdd', 'anvisa', 'receita federal', 'concorrente', 'fabricante'
+        ]
+    },
+    // 2. Crítico / Negativo / Ruptura / Atraso (Vermelho)
+    {
+        color: SEMANTIC_COLORS.critical,
+        keywords: [
+            'vencido', 'vencida', 'vencidas', 'atraso', 'atrasado', 'atrasada',
+            'zerado', 'zerada', 'zero', 'critico', 'critica', 'ruptura',
+            'inadimplencia', 'inadimplente', 'calote', 'divida', 'prejuizo',
+            'risco alto', 'alto risco', 'perda', 'cancelado', 'bloqueado',
+            'negativo', 'falta', 'ficticio', 'urgente'
+        ]
+    },
+    // 3. Atenção / Alerta Moderado / Custo (Âmbar / Laranja)
+    {
+        color: SEMANTIC_COLORS.warning,
+        keywords: [
+            'atencao', 'alerta', 'pendente', 'baixo', 'baixa', 'minimo',
+            'risco medio', 'moderado', 'giro lento', 'sazonal', 'juros',
+            'capital de giro', 'excesso', 'parado', 'reavaliar', 'oscilacao'
+        ]
+    },
+    // 4. Positivo / Saudável / Entrada de Caixa (Verde Esmeralda)
+    {
+        color: SEMANTIC_COLORS.positive,
+        keywords: [
+            'a receber', 'em dia', 'no prazo', 'pago', 'paga', 'recebido',
+            'quitado', 'lucro', 'positivo', 'saudavel', 'ok', 'normal',
+            'meta', 'crescimento', 'faturamento', 'receita', 'ativo',
+            'concluido', 'aprovado', 'fidelizado'
+        ]
+    },
+    // 5. Segmentos B2B / Leads / Expansão Comercial (Teal)
+    {
+        color: SEMANTIC_COLORS.expansion,
+        keywords: [
+            'lead', 'b2b', 'prospeccao', 'supermercado', 'minimercado',
+            'mercearia', 'lavanderia', 'estetica automotiva', 'atacado', 'varejo'
+        ]
+    },
+    // 6. Neutro / Inativo
+    {
+        color: SEMANTIC_COLORS.neutral,
+        keywords: ['inativo', 'descontinuado', 'outros', 'nao informado']
+    }
+]
+
+const normalizeKeywordText = (text) =>
+    String(text ?? '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+
+const hexToRgba = (hex, alpha = 0.16) => {
+    const clean = String(hex || '#1976D2').replace('#', '')
+    if (clean.length !== 6) return `rgba(25, 118, 210, ${alpha})`
+    const r = parseInt(clean.slice(0, 2), 16)
+    const g = parseInt(clean.slice(2, 4), 16)
+    const b = parseInt(clean.slice(4, 6), 16)
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+const resolveSemanticColor = (label, index = 0, contextTitle = '', value = null) => {
+    const normLabel = normalizeKeywordText(label)
+    const normTitle = normalizeKeywordText(contextTitle)
+
+    // Regra contextual: em gráficos de estoque/saldo, valor <= 0 fica vermelho imediatamente
+    const isStockContext =
+        normTitle.includes('estoque') ||
+        normTitle.includes('saldo') ||
+        normTitle.includes('cobertura')
+    if (isStockContext && value !== null && Number(value) <= 0) {
+        return SEMANTIC_COLORS.critical
+    }
+
+    for (const rule of KEYWORD_RULES) {
+        if (rule.keywords.some((kw) => normLabel.includes(kw))) {
+            return rule.color
+        }
+    }
+
+    return NEUTRAL_RANKING_PALETTE[index % NEUTRAL_RANKING_PALETTE.length]
+}
 
 const theme = computed(() => ({
     text: $q.dark.isActive ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.65)',
@@ -192,6 +554,34 @@ const theme = computed(() => ({
     tooltipBg: $q.dark.isActive ? 'rgba(24,24,27,0.95)' : 'rgba(255,255,255,0.95)',
     tooltipText: $q.dark.isActive ? '#fff' : '#333'
 }))
+
+const canSwitchChartType = (chartType) => chartType !== 'line'
+
+const getEffectiveChartType = (msg, index) =>
+    chartTypeOverrides.value[index] || msg.chart
+
+const setChartOverride = (index, type) => {
+    chartTypeOverrides.value = { ...chartTypeOverrides.value, [index]: type }
+}
+
+const setChartContainerRef = (el, index) => {
+    if (el) chartContainers.value[index] = el
+}
+
+const downloadChartImage = (index, title = 'grafico-relatorio') => {
+    const container = chartContainers.value[index]
+    const canvas = container?.querySelector('canvas')
+    if (!canvas) return
+
+    const link = document.createElement('a')
+    const slug = String(title)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '')
+    link.download = `${slug || 'grafico'}.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+}
 
 const resolveChartComponent = (chartType) => {
     if (chartType === 'line') return LineChart
@@ -228,7 +618,7 @@ const formatMetricValue = (value, unit = 'currency') => {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(num)
     }
     if (unit === 'percent') {
-        return `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(num)}%`
+        return `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(num)}%`
     }
     return `${new Intl.NumberFormat('pt-BR').format(num)} un`
 }
@@ -248,22 +638,23 @@ const formatAxisTick = (value, unit = 'currency') => {
 const buildChartData = (chartType, chartData) => {
     const labels = Array.isArray(chartData?.labels) ? chartData.labels : []
     const series = Array.isArray(chartData?.series) ? chartData.series : []
+    const title = chartData?.title || ''
 
     if (chartType === 'line') {
         return {
             labels,
             datasets: series.map((s, idx) => {
-                const color = CHART_COLORS[idx % CHART_COLORS.length]
+                const color = resolveSemanticColor(s.name || title, idx, title)
                 return {
                     label: s.name || 'Série',
                     data: (s.data || []).map((v) => Number(v) || 0),
                     borderColor: color,
-                    backgroundColor: 'rgba(25, 118, 210, 0.15)',
+                    backgroundColor: hexToRgba(color, 0.16),
                     fill: series.length === 1,
                     tension: 0.35,
-                    borderWidth: 2,
-                    pointRadius: $q.screen.xs ? 2.5 : 3,
-                    pointHoverRadius: 5,
+                    borderWidth: 2.2,
+                    pointRadius: $q.screen.xs ? 2.5 : 3.5,
+                    pointHoverRadius: 5.5,
                     pointBackgroundColor: color,
                     pointBorderColor: '#FFFFFF',
                     pointBorderWidth: 1.5
@@ -274,13 +665,16 @@ const buildChartData = (chartType, chartData) => {
 
     if (chartType === 'doughnut' || chartType === 'pie') {
         const firstSerie = series[0] || { name: '', data: [] }
+        const values = (firstSerie.data || []).map((v) => Number(v) || 0)
         return {
             labels,
             datasets: [
                 {
-                    label: firstSerie.name || chartData?.title || '',
-                    data: (firstSerie.data || []).map((v) => Number(v) || 0),
-                    backgroundColor: labels.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
+                    label: firstSerie.name || title || '',
+                    data: values,
+                    backgroundColor: labels.map((lbl, i) =>
+                        resolveSemanticColor(lbl, i, title, values[i])
+                    ),
                     borderWidth: 0,
                     hoverOffset: 6
                 }
@@ -290,16 +684,21 @@ const buildChartData = (chartType, chartData) => {
 
     return {
         labels,
-        datasets: series.map((s, idx) => ({
-            label: s.name || 'Valor',
-            data: (s.data || []).map((v) => Number(v) || 0),
-            backgroundColor:
+        datasets: series.map((s, idx) => {
+            const values = (s.data || []).map((v) => Number(v) || 0)
+            const bgColors =
                 series.length === 1
-                    ? labels.map((_, i) => CHART_COLORS[i % CHART_COLORS.length])
-                    : CHART_COLORS[idx % CHART_COLORS.length],
-            borderRadius: 6,
-            maxBarThickness: $q.screen.xs ? 26 : 36
-        }))
+                    ? labels.map((lbl, i) => resolveSemanticColor(lbl, i, title, values[i]))
+                    : resolveSemanticColor(s.name || title, idx, title)
+
+            return {
+                label: s.name || 'Valor',
+                data: values,
+                backgroundColor: bgColors,
+                borderRadius: 6,
+                maxBarThickness: $q.screen.xs ? 26 : 36
+            }
+        })
     }
 }
 
@@ -433,7 +832,17 @@ const normalizeMarkdownToHtml = (input) => {
     let text = String(input || '').replace(/\r\n/g, '\n').trim()
     if (!text) return ''
 
+    // Remove imagens markdown inline e placeholders ![Gráfico ... registrado]
     text = text.replace(/!\[[^\]]*\]\(data:image\/[^)]+\)/gi, '')
+
+    // Remove blocos de código contendo caixas ASCII (┌─┐│└┘) gerados por engano pelo LLM
+    text = text.replace(/```[\s\S]*?```/g, (match) => {
+        const inner = match.replace(/^```[^\n]*\n?|\n?```$/g, '').trim()
+        if (/[┌┐└┘│─┬┴├┤┼]/.test(inner)) {
+            return ''
+        }
+        return `<pre><code>${inner}</code></pre>`
+    })
 
     text = text
         .replace(/`([^`\n]+)`/g, '<code>$1</code>')
@@ -560,7 +969,6 @@ const sanitizeHtml = (dirtyHtml) => {
 
     cleanNode(doc.body)
 
-    // Garante que TODA tabela (seja Markdown ou HTML puro da IA) tenha scroll horizontal isolado
     doc.body.querySelectorAll('table').forEach((table) => {
         if (!table.parentElement?.classList.contains('table-wrapper')) {
             const wrapper = doc.createElement('div')
@@ -599,6 +1007,27 @@ const copyResponse = async (rawText, index) => {
     }, 2000)
 }
 
+const exportChatMarkdown = () => {
+    const lines = [
+        '# Relatório Analítico — Simples Gestão (ERP + KDD)',
+        `_Gerado em: ${new Date().toLocaleString('pt-BR')}_\n`
+    ]
+
+    messages.value.forEach((msg) => {
+        const author = msg.sent ? 'Usuário' : 'Assistente IA'
+        const cleanBody = String(msg.text || '').replace(/<[^>]+>/g, '').trim()
+        lines.push(`## ${author} (${msg.stamp})\n${cleanBody}\n`)
+    })
+
+    const blob = new Blob([lines.join('\n---\n\n')], { type: 'text/markdown;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `relatorio-ia-kdd-${new Date().toISOString().slice(0, 10)}.md`
+    a.click()
+    URL.revokeObjectURL(url)
+}
+
 const scrollToBottom = () => {
     nextTick(() => {
         if (messagesContainer.value?.$el) {
@@ -609,13 +1038,16 @@ const scrollToBottom = () => {
 
 const clearChat = () => {
     messages.value = [createWelcomeMessage()]
+    chartTypeOverrides.value = {}
+    sessionStorage.removeItem(STORAGE_KEY)
 }
 
-const sendMessage = async () => {
+const sendMessage = async (categoryOverride = null) => {
     const text = newMessage.value.trim()
     if (!text || isTyping.value) return
 
-    messages.value.push({ sent: true, text, stamp: getCurrentTime() })
+    const category = categoryOverride || promptCategory.value
+    messages.value.push({ sent: true, text, category, stamp: getCurrentTime() })
     newMessage.value = ''
     isTyping.value = true
     scrollToBottom()
@@ -645,9 +1077,14 @@ const sendMessage = async () => {
     }
 }
 
-const sendQuickPrompt = (promptText) => {
-    newMessage.value = promptText
-    sendMessage()
+const sendQuickPrompt = (item) => {
+    newMessage.value = item.prompt
+    sendMessage(promptCategory.value)
+}
+
+const runFullKddDiagnostic = () => {
+    promptCategory.value = 'kdd'
+    sendQuickPrompt(kddPrompts[0])
 }
 </script>
 
@@ -656,7 +1093,6 @@ const sendQuickPrompt = (promptText) => {
     overflow-x: hidden;
 }
 
-/* Trava a largura do balão do Quasar para nunca estourar a tela mobile */
 .responsive-chat-message {
     width: 100%;
     max-width: 100%;
@@ -706,6 +1142,11 @@ const sendQuickPrompt = (promptText) => {
     position: relative;
     width: 100%;
     min-width: 0;
+}
+
+.category-toggle {
+    flex-shrink: 0;
+    border-radius: 6px;
 }
 
 .quick-prompts-bar {
@@ -758,7 +1199,6 @@ const sendQuickPrompt = (promptText) => {
     font-weight: 600;
 }
 
-/* Normaliza TODOS os títulos (h1..h6) para não ficarem gigantes no balão */
 .rich-content :deep(h1),
 .rich-content :deep(h2),
 .rich-content :deep(h3),
@@ -800,11 +1240,25 @@ const sendQuickPrompt = (promptText) => {
     margin-bottom: 0;
 }
 
+.rich-content :deep(pre) {
+    background-color: rgba(0, 0, 0, 0.06);
+    padding: 0.65em 0.8em;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 0.82rem;
+    margin: 0.5em 0 0.75em 0;
+}
+
 .rich-content :deep(code) {
     background-color: rgba(0, 0, 0, 0.08);
     padding: 0.15em 0.4em;
     border-radius: 4px;
     font-size: 0.86em;
+}
+
+.rich-content :deep(pre code) {
+    background-color: transparent;
+    padding: 0;
 }
 
 .rich-content :deep(blockquote) {
@@ -869,6 +1323,7 @@ const sendQuickPrompt = (promptText) => {
 }
 
 /* Ajustes para Dark Mode */
+:global(.body--dark) .rich-content :deep(pre),
 :global(.body--dark) .rich-content :deep(code) {
     background-color: rgba(255, 255, 255, 0.12);
 }
