@@ -1,27 +1,32 @@
 <template>
-    <q-page class="q-pa-xs q-pa-sm-md flex flex-center">
-        <q-card flat bordered class="column no-wrap overflow-hidden full-width"
-            :style="{ height: $q.screen.lt.md ? 'calc(100vh - 135px)' : 'calc(100vh - 100px)' }">
-            <!-- Cabeçalho discreto do Chat -->
+    <q-page :style-fn="pageStyleFn" class="q-pa-none q-pa-sm-md flex flex-center overflow-hidden">
+        <q-card flat :bordered="$q.screen.gt.xs" class="column no-wrap overflow-hidden full-width chat-card"
+            :style="cardStyle">
+            <!-- Cabeçalho do Chat -->
             <q-card-section class="col-auto row items-center justify-between q-py-xs q-px-sm q-px-md-md">
-                <div class="row items-center q-gutter-xs">
-                    <q-icon name="auto_awesome" color="amber-8" size="20px" />
-                    <span class="text-subtitle2 text-weight-medium">Assistente de Relatórios IA</span>
+                <div class="row items-center q-gutter-xs no-wrap ellipsis">
+                    <q-icon name="auto_awesome" color="amber-8" :size="$q.screen.xs ? '18px' : '20px'" />
+                    <span class="text-subtitle2 text-weight-medium ellipsis">
+                        Assistente de Relatórios IA
+                    </span>
                 </div>
-                <q-btn v-if="messages.length > 1" flat dense size="sm" color="grey-6" icon="delete_sweep" label="Limpar"
-                    no-caps :disable="isTyping" @click="clearChat" />
+                <q-btn v-if="messages.length > 1" flat dense size="sm" color="grey-6" icon="delete_sweep"
+                    :label="$q.screen.xs ? '' : 'Limpar'" no-caps :disable="isTyping" @click="clearChat">
+                    <q-tooltip v-if="$q.screen.xs">Limpar conversa</q-tooltip>
+                </q-btn>
             </q-card-section>
 
             <q-separator />
 
             <!-- Área de Mensagens -->
-            <q-card-section class="col scroll q-pa-sm q-pa-sm-md" ref="messagesContainer">
-                <div v-for="(msg, index) in messages" :key="index" class="q-mb-md"
-                    :class="msg.sent ? 'q-pl-md q-pl-sm-xl' : 'q-pr-xs q-pr-sm-lg'">
+            <q-card-section ref="messagesContainer" class="col scroll q-pa-xs q-pa-sm-md messages-area">
+                <div v-for="(msg, index) in messages" :key="index" class="q-mb-sm q-mb-sm-md message-row"
+                    :class="msg.sent ? 'q-pl-lg q-pl-sm-xl' : 'q-pr-none q-pr-sm-md'">
                     <q-chat-message :name="msg.sent ? 'Você' : 'Assistente IA'" :stamp="msg.stamp" :sent="msg.sent"
                         :bg-color="msg.sent ? 'primary' : ($q.dark.isActive ? 'grey-9' : 'grey-2')"
-                        :text-color="msg.sent ? 'white' : ($q.dark.isActive ? 'grey-1' : 'grey-10')">
-                        <template #avatar>
+                        :text-color="msg.sent ? 'white' : ($q.dark.isActive ? 'grey-1' : 'grey-10')"
+                        class="responsive-chat-message">
+                        <template v-if="$q.screen.gt.xs" #avatar>
                             <q-avatar size="30px" class="q-mx-xs">
                                 <q-icon v-if="!msg.sent" name="auto_awesome" color="amber-8" size="20px" />
                                 <q-icon v-else name="person" color="primary" size="20px" />
@@ -33,16 +38,17 @@
 
                         <!-- Resposta da IA -->
                         <div v-else class="ai-message-wrapper">
-                            <div class="text-body2 rich-content" v-html="renderFormattedContent(msg.text)"></div>
+                            <div class="rich-content" v-html="renderFormattedContent(msg.text)"></div>
 
                             <!-- Card do Gráfico (vue-chartjs) -->
-                            <q-card v-if="msg.chart && msg.chartData" flat bordered class="q-mt-md"
+                            <q-card v-if="msg.chart && msg.chartData" flat bordered
+                                class="q-mt-sm q-mt-sm-md chart-card"
                                 :class="$q.dark.isActive ? 'bg-grey-10' : 'bg-white'">
-                                <q-card-section class="q-pa-sm q-pa-sm-md">
-                                    <div class="row items-center q-mb-sm">
-                                        <q-icon :name="getChartIcon(msg.chart)" color="primary" size="20px"
-                                            class="q-mr-xs" />
-                                        <div class="text-subtitle2 text-weight-bold">
+                                <q-card-section class="q-pa-xs q-pa-sm-md">
+                                    <div class="row items-center no-wrap q-mb-xs q-mb-sm-sm">
+                                        <q-icon :name="getChartIcon(msg.chart)" color="primary" size="18px"
+                                            class="q-mr-xs col-auto" />
+                                        <div class="text-caption text-sm-subtitle2 text-weight-bold ellipsis">
                                             {{ msg.chartData.title || 'Análise Gráfica' }}
                                         </div>
                                     </div>
@@ -69,7 +75,7 @@
                 </div>
 
                 <!-- Indicador de Carregamento -->
-                <div v-if="isTyping" class="row items-center q-ml-md q-my-sm text-grey-6">
+                <div v-if="isTyping" class="row items-center q-ml-sm q-ml-sm-md q-my-sm text-grey-6">
                     <q-spinner-dots size="1.8em" color="primary" class="q-mr-xs" />
                     <span class="text-caption">Analisando dados do ERP...</span>
                 </div>
@@ -78,25 +84,25 @@
             <q-separator />
 
             <!-- Entrada Fixa -->
-            <q-card-section class="col-auto q-pa-xs q-pa-sm-sm">
-                <!-- Prompts Sugeridos -->
-                <div class="row no-wrap scroll q-gutter-xs q-mb-xs q-pb-xs">
+            <q-card-section class="col-auto q-pa-xs q-pa-sm-sm input-area">
+                <!-- Prompts Sugeridos em linha única com scroll horizontal -->
+                <div class="row no-wrap scroll q-gutter-xs q-mb-xs quick-prompts-bar">
                     <q-btn v-for="(prompt, idx) in quickPrompts" :key="idx" outline dense size="sm" color="primary"
-                        :label="prompt" no-caps class="no-shrink" :disable="isTyping"
+                        :label="prompt" no-caps no-wrap class="q-px-sm quick-prompt-btn" :disable="isTyping"
                         @click="sendQuickPrompt(prompt)" />
                 </div>
 
                 <!-- Campo de Digitação -->
-                <div class="row items-end q-gutter-xs">
-                    <q-input v-model="newMessage" dense outlined autogrow :max-height="110" class="col"
-                        placeholder="Pergunte sobre vendas, estoque ou parcelas... (Shift+Enter para nova linha)"
-                        :disable="isTyping" @keydown.enter.exact.prevent="sendMessage">
-                        <template #prepend>
+                <div class="row items-end q-gutter-xs no-wrap">
+                    <q-input v-model="newMessage" dense outlined autogrow :max-height="$q.screen.xs ? 84 : 120"
+                        class="col" :placeholder="inputPlaceholder" :disable="isTyping"
+                        @keydown.enter.exact.prevent="sendMessage">
+                        <template v-if="$q.screen.gt.xs" #prepend>
                             <q-icon name="auto_awesome" color="primary" size="18px" />
                         </template>
                     </q-input>
-                    <q-btn color="primary" icon="send" unelevated :disable="!newMessage.trim() || isTyping"
-                        @click="sendMessage" />
+                    <q-btn color="primary" icon="send" unelevated :round="$q.screen.xs" :dense="$q.screen.xs"
+                        class="send-btn" :disable="!newMessage.trim() || isTyping" @click="sendMessage" />
                 </div>
             </q-card-section>
         </q-card>
@@ -118,12 +124,41 @@ const newMessage = ref('')
 const isTyping = ref(false)
 const copiedIndex = ref(null)
 
+// Calcula a altura exata descontando automaticamente Header + Footer do QLayout
+const layoutOffset = ref(0)
+const pageStyleFn = (offset, height) => {
+    layoutOffset.value = offset
+    return {
+        height: `${height - offset}px`,
+        minHeight: `${height - offset}px`
+    }
+}
+
+const cardStyle = computed(() => {
+    if ($q.screen.xs) {
+        return {
+            height: '100%',
+            borderRadius: '0px'
+        }
+    }
+    return {
+        height: '100%',
+        maxWidth: '1120px'
+    }
+})
+
+const inputPlaceholder = computed(() =>
+    $q.screen.xs
+        ? 'Pergunte sobre vendas, estoque ou demanda...'
+        : 'Pergunte sobre vendas, estoque, demanda ou parcelas... (Shift+Enter para nova linha)'
+)
+
 const getCurrentTime = () =>
     new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
 const createWelcomeMessage = () => ({
     sent: false,
-    text: '<p>Olá! Sou o seu assistente de relatórios inteligente.</p><p>Como posso ajudar com a gestão de <strong>vendas</strong>, <strong>estoque</strong> ou <strong>financeiro</strong> hoje?</p>',
+    text: '<p>Olá! Sou o seu assistente de relatórios inteligente.</p><p>Como posso ajudar com a gestão de <strong>vendas</strong>, <strong>estoque</strong>, <strong>previsão de demanda</strong> ou <strong>financeiro</strong> hoje?</p>',
     chart: null,
     chartData: null,
     stamp: getCurrentTime()
@@ -132,8 +167,8 @@ const createWelcomeMessage = () => ({
 const messages = ref([createWelcomeMessage()])
 
 const quickPrompts = [
+    'Previsão de demanda e ações',
     'Resumo de vendas do mês',
-    'Resumo de vendas do ano',
     'Produtos com estoque crítico',
     'Previsão de recebimentos'
 ]
@@ -161,7 +196,7 @@ const theme = computed(() => ({
 const resolveChartComponent = (chartType) => {
     if (chartType === 'line') return LineChart
     if (chartType === 'doughnut' || chartType === 'pie') return DoughnutChart
-    return BarChart // 'bar' e 'horizontal_bar'
+    return BarChart
 }
 
 const getChartIcon = (chartType) => {
@@ -173,10 +208,18 @@ const getChartIcon = (chartType) => {
 
 const getChartHeight = (chartType, chartData) => {
     const count = chartData?.labels?.length || 5
+    const isMobile = $q.screen.lt.sm
     if (chartType === 'horizontal_bar') {
-        return `${Math.max(240, count * 44 + 40)}px`
+        const rowHeight = isMobile ? 38 : 44
+        const minHeight = isMobile ? 210 : 240
+        return `${Math.max(minHeight, count * rowHeight + 36)}px`
     }
-    return '270px'
+    return isMobile ? '220px' : '270px'
+}
+
+const truncateLabel = (label, maxLength) => {
+    const str = String(label ?? '')
+    return str.length > maxLength ? `${str.slice(0, maxLength - 1)}…` : str
 }
 
 const formatMetricValue = (value, unit = 'currency') => {
@@ -219,11 +262,11 @@ const buildChartData = (chartType, chartData) => {
                     fill: series.length === 1,
                     tension: 0.35,
                     borderWidth: 2,
-                    pointRadius: 3,
+                    pointRadius: $q.screen.xs ? 2.5 : 3,
                     pointHoverRadius: 5,
                     pointBackgroundColor: color,
                     pointBorderColor: '#FFFFFF',
-                    pointBorderWidth: 2
+                    pointBorderWidth: 1.5
                 }
             })
         }
@@ -245,7 +288,6 @@ const buildChartData = (chartType, chartData) => {
         }
     }
 
-    // 'bar' ou 'horizontal_bar'
     return {
         labels,
         datasets: series.map((s, idx) => ({
@@ -256,7 +298,7 @@ const buildChartData = (chartType, chartData) => {
                     ? labels.map((_, i) => CHART_COLORS[i % CHART_COLORS.length])
                     : CHART_COLORS[idx % CHART_COLORS.length],
             borderRadius: 6,
-            maxBarThickness: 36
+            maxBarThickness: $q.screen.xs ? 26 : 36
         }))
     }
 }
@@ -264,20 +306,23 @@ const buildChartData = (chartType, chartData) => {
 const buildChartOptions = (chartType, chartData) => {
     const unit = chartData?.unit || 'currency'
     const hasMultipleSeries = (chartData?.series?.length || 0) > 1
+    const isMobile = $q.screen.xs
+    const tickFontSize = isMobile ? 10 : 11
+    const labels = Array.isArray(chartData?.labels) ? chartData.labels : []
 
     if (chartType === 'doughnut' || chartType === 'pie') {
         return {
             responsive: true,
             maintainAspectRatio: false,
-            cutout: chartType === 'doughnut' ? '60%' : '0%',
+            cutout: chartType === 'doughnut' ? '58%' : '0%',
             plugins: {
                 legend: {
                     position: 'bottom',
                     labels: {
                         color: theme.value.text,
-                        boxWidth: 12,
-                        padding: 14,
-                        font: { size: 11 }
+                        boxWidth: isMobile ? 10 : 12,
+                        padding: isMobile ? 10 : 14,
+                        font: { size: tickFontSize }
                     }
                 },
                 tooltip: {
@@ -306,13 +351,17 @@ const buildChartOptions = (chartType, chartData) => {
             legend: {
                 display: hasMultipleSeries,
                 position: 'bottom',
-                labels: { color: theme.value.text, boxWidth: 12, font: { size: 11 } }
+                labels: { color: theme.value.text, boxWidth: 10, font: { size: tickFontSize } }
             },
             tooltip: {
                 backgroundColor: theme.value.tooltipBg,
                 titleColor: theme.value.tooltipText,
                 bodyColor: theme.value.tooltipText,
                 callbacks: {
+                    title: (items) => {
+                        const idx = items?.[0]?.dataIndex ?? 0
+                        return labels[idx] ?? items?.[0]?.label ?? ''
+                    },
                     label: (ctx) => {
                         const rawVal = isHorizontal ? ctx.parsed.x : ctx.parsed.y
                         return ` ${ctx.dataset.label}: ${formatMetricValue(rawVal, unit)}`
@@ -327,7 +376,8 @@ const buildChartOptions = (chartType, chartData) => {
                     grid: { color: theme.value.grid },
                     ticks: {
                         color: theme.value.text,
-                        font: { size: 11 },
+                        font: { size: tickFontSize },
+                        maxTicksLimit: isMobile ? 4 : 6,
                         callback: (val) => formatAxisTick(val, unit)
                     }
                 },
@@ -335,7 +385,8 @@ const buildChartOptions = (chartType, chartData) => {
                     grid: { display: false },
                     ticks: {
                         color: theme.value.text,
-                        font: { size: 11 }
+                        font: { size: tickFontSize },
+                        callback: (_, index) => truncateLabel(labels[index], isMobile ? 13 : 24)
                     }
                 }
             }
@@ -345,7 +396,8 @@ const buildChartOptions = (chartType, chartData) => {
                     grid: { color: theme.value.grid },
                     ticks: {
                         color: theme.value.text,
-                        font: { size: 11 },
+                        font: { size: tickFontSize },
+                        maxTicksLimit: isMobile ? 5 : 7,
                         callback: (val) => formatAxisTick(val, unit)
                     }
                 },
@@ -353,7 +405,9 @@ const buildChartOptions = (chartType, chartData) => {
                     grid: { display: false },
                     ticks: {
                         color: theme.value.text,
-                        font: { size: 11 }
+                        font: { size: tickFontSize },
+                        maxRotation: isMobile ? 35 : 0,
+                        callback: (_, index) => truncateLabel(labels[index], isMobile ? 10 : 18)
                     }
                 }
             }
@@ -379,16 +433,13 @@ const normalizeMarkdownToHtml = (input) => {
     let text = String(input || '').replace(/\r\n/g, '\n').trim()
     if (!text) return ''
 
-    // Remove imagens/SVGs em base64 geradas no texto pela IA
     text = text.replace(/!\[[^\]]*\]\(data:image\/[^)]+\)/gi, '')
 
-    // Converte sintaxe Markdown inline
     text = text
         .replace(/`([^`\n]+)`/g, '<code>$1</code>')
         .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
         .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>')
 
-    // Normaliza quebras <br>
     text = text.replace(/(?:<br\s*\/?>\s*){2,}/gi, '\n\n')
     text = text.replace(/<br\s*\/?>/gi, '\n')
 
@@ -410,7 +461,6 @@ const normalizeMarkdownToHtml = (input) => {
             const lines = trimmed.split('\n').map((l) => l.trim()).filter(Boolean)
             if (!lines.length) return ''
 
-            // Tabela Markdown
             if (lines.length >= 2 && lines[0].includes('|') && /^\|?[\s-:|]+\|?$/.test(lines[1])) {
                 const parseRow = (row) =>
                     row
@@ -426,10 +476,9 @@ const normalizeMarkdownToHtml = (input) => {
                     .map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join('')}</tr>`)
                     .join('')}</tbody>`
 
-                return `<div class="table-wrapper"><table>${thead}${tbody}</table></div>`
+                return `<table>${thead}${tbody}</table>`
             }
 
-            // Títulos Markdown
             if (/^#{1,3}\s+/.test(lines[0])) {
                 const level = lines[0].match(/^(#{1,3})/)[1].length
                 const tag = level === 1 ? 'h4' : level === 2 ? 'h5' : 'h6'
@@ -438,7 +487,6 @@ const normalizeMarkdownToHtml = (input) => {
                 return `<${tag}>${title}</${tag}>${rest ? `<p>${rest}</p>` : ''}`
             }
 
-            // Lista não ordenada (•, - ou *)
             if (lines.every((l) => /^[•\-*]\s+/.test(l))) {
                 const items = lines
                     .map((l) => `<li>${l.replace(/^[•\-*]\s+/, '')}</li>`)
@@ -446,7 +494,6 @@ const normalizeMarkdownToHtml = (input) => {
                 return `<ul>${items}</ul>`
             }
 
-            // Lista ordenada
             if (lines.every((l) => /^\d+[.)]\s+/.test(l))) {
                 const items = lines
                     .map((l) => `<li>${l.replace(/^\d+[.)]\s+/, '')}</li>`)
@@ -454,7 +501,6 @@ const normalizeMarkdownToHtml = (input) => {
                 return `<ol>${items}</ol>`
             }
 
-            // Citação
             if (lines.every((l) => l.startsWith('>'))) {
                 return `<blockquote>${lines.map((l) => l.replace(/^>\s?/, '')).join('<br>')}</blockquote>`
             }
@@ -513,6 +559,17 @@ const sanitizeHtml = (dirtyHtml) => {
     }
 
     cleanNode(doc.body)
+
+    // Garante que TODA tabela (seja Markdown ou HTML puro da IA) tenha scroll horizontal isolado
+    doc.body.querySelectorAll('table').forEach((table) => {
+        if (!table.parentElement?.classList.contains('table-wrapper')) {
+            const wrapper = doc.createElement('div')
+            wrapper.className = 'table-wrapper'
+            table.parentNode.insertBefore(wrapper, table)
+            wrapper.appendChild(table)
+        }
+    })
+
     return doc.body.innerHTML
 }
 
@@ -595,25 +652,91 @@ const sendQuickPrompt = (promptText) => {
 </script>
 
 <style scoped>
+.messages-area {
+    overflow-x: hidden;
+}
+
+/* Trava a largura do balão do Quasar para nunca estourar a tela mobile */
+.responsive-chat-message {
+    width: 100%;
+    max-width: 100%;
+}
+
+.responsive-chat-message :deep(.q-message-container) {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.responsive-chat-message :deep(.q-message-container > div) {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.responsive-chat-message :deep(.q-message-text) {
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.responsive-chat-message :deep(.q-message-text-content) {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.ai-message-wrapper {
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+}
+
 .user-message {
     white-space: pre-wrap;
     word-break: break-word;
-    line-height: 1.5;
+    line-height: 1.45;
+}
+
+.chart-card {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
 }
 
 .chart-container {
     position: relative;
     width: 100%;
-    min-width: 260px;
+    min-width: 0;
+}
+
+.quick-prompts-bar {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.quick-prompts-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.quick-prompt-btn {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.send-btn {
+    min-height: 40px;
+    flex-shrink: 0;
 }
 
 .rich-content {
-    line-height: 1.6;
+    font-size: 0.92rem;
+    line-height: 1.55;
     word-break: break-word;
+    overflow-wrap: anywhere;
+    max-width: 100%;
 }
 
 .rich-content :deep(p) {
-    margin: 0 0 0.85em 0;
+    margin: 0 0 0.75em 0;
 }
 
 .rich-content :deep(p:last-child),
@@ -627,7 +750,7 @@ const sendQuickPrompt = (promptText) => {
 .rich-content :deep(hr) {
     border: none;
     border-top: 1px solid rgba(128, 128, 128, 0.25);
-    margin: 0.9em 0;
+    margin: 0.8em 0;
 }
 
 .rich-content :deep(strong),
@@ -635,18 +758,38 @@ const sendQuickPrompt = (promptText) => {
     font-weight: 600;
 }
 
+/* Normaliza TODOS os títulos (h1..h6) para não ficarem gigantes no balão */
+.rich-content :deep(h1),
+.rich-content :deep(h2),
+.rich-content :deep(h3),
 .rich-content :deep(h4),
 .rich-content :deep(h5),
 .rich-content :deep(h6) {
-    margin: 0.5em 0 0.45em 0;
-    font-weight: 600;
-    line-height: 1.35;
+    margin: 0.45em 0 0.4em 0;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: normal;
+}
+
+.rich-content :deep(h1),
+.rich-content :deep(h2) {
+    font-size: 1.08rem;
+}
+
+.rich-content :deep(h3),
+.rich-content :deep(h4) {
+    font-size: 1rem;
+}
+
+.rich-content :deep(h5),
+.rich-content :deep(h6) {
+    font-size: 0.94rem;
 }
 
 .rich-content :deep(ul),
 .rich-content :deep(ol) {
-    margin: 0 0 0.85em 0;
-    padding-left: 1.4em;
+    margin: 0 0 0.75em 0;
+    padding-left: 1.25em;
 }
 
 .rich-content :deep(li) {
@@ -661,38 +804,68 @@ const sendQuickPrompt = (promptText) => {
     background-color: rgba(0, 0, 0, 0.08);
     padding: 0.15em 0.4em;
     border-radius: 4px;
-    font-size: 0.88em;
+    font-size: 0.86em;
 }
 
 .rich-content :deep(blockquote) {
     border-left: 3px solid var(--q-primary);
-    margin: 0 0 0.85em 0;
-    padding-left: 0.8em;
+    margin: 0 0 0.75em 0;
+    padding-left: 0.75em;
     opacity: 0.9;
 }
 
 .rich-content :deep(.table-wrapper) {
+    display: block;
+    width: 100%;
+    max-width: 100%;
     overflow-x: auto;
-    margin: 0.5em 0 0.85em 0;
+    -webkit-overflow-scrolling: touch;
+    margin: 0.5em 0 0.75em 0;
     border-radius: 6px;
 }
 
 .rich-content :deep(table) {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.85rem;
+    font-size: 0.84rem;
 }
 
 .rich-content :deep(th),
 .rich-content :deep(td) {
     border: 1px solid rgba(0, 0, 0, 0.14);
-    padding: 7px 10px;
+    padding: 6px 8px;
     text-align: left;
+    white-space: nowrap;
 }
 
 .rich-content :deep(th) {
     background-color: rgba(0, 0, 0, 0.05);
     font-weight: 600;
+}
+
+@media (max-width: 599px) {
+    .rich-content {
+        font-size: 0.85rem;
+    }
+
+    .rich-content :deep(h1),
+    .rich-content :deep(h2) {
+        font-size: 0.98rem;
+    }
+
+    .rich-content :deep(h3),
+    .rich-content :deep(h4) {
+        font-size: 0.92rem;
+    }
+
+    .rich-content :deep(table) {
+        font-size: 0.76rem;
+    }
+
+    .rich-content :deep(th),
+    .rich-content :deep(td) {
+        padding: 5px 7px;
+    }
 }
 
 /* Ajustes para Dark Mode */
