@@ -8,7 +8,7 @@ const isLocalhost =
 
 // 2. Define a URL padrão com base na detecção
 const defaultApiUrl = isLocalhost
-    ? 'http://192.168.0.20:8000/api' // Ajuste para http://localhost:8000/api se preferir
+    ? 'http://localhost:8005/api' // Ajuste para http://localhost:8000/api se preferir
     : 'https://api.simplesgestao.digitalizesistemas.com/api/'
 
 // 3. Cria a instância (Variável de ambiente tem prioridade, depois a lógica dinâmica)

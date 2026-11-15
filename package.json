@@ -16,26 +16,26 @@
     "dependencies": {
         "@quasar/extras": "^2.1.0",
         "@tanstack/vue-query": "^5.107.1",
-        "axios": "^1.21.0",
+        "axios": "^1.21.1",
         "chart.js": "^4.6.1",
         "pinia": "^4.1.0",
-        "quasar": "^2.35.2",
+        "quasar": "^2.35.4",
         "vue": "^3.5.45",
         "vue-chartjs": "^5.3.4",
-        "vue-router": "^5.4.0"
+        "vue-router": "^5.5.1"
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
-        "eslint": "^10.14.0",
-        "eslint-plugin-vue": "^10.12.0",
+        "eslint": "^10.15.0",
+        "eslint-plugin-vue": "^10.12.1",
         "globals": "^17.14.0",
         "vite-plugin-checker": "^0.14.5",
         "vue-eslint-parser": "^10.4.2",
         "@vue/eslint-config-prettier": "^10.2.0",
-        "prettier": "^3.9.10",
-        "@quasar/app-vite": "^3.10.3",
+        "prettier": "^3.10.1",
+        "@quasar/app-vite": "^3.10.4",
         "autoprefixer": "^10.6.2",
-        "postcss": "^8.5.32"
+        "postcss": "^8.5.33"
     },
     "keywords": [
         "quasar",
