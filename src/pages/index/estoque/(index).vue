@@ -1,47 +1,55 @@
 <template>
-    <q-page class="q-pa-sm q-pa-md-sm">
+    <q-page class="q-pa-sm q-pa-md-md overflow-hidden">
         <!-- Breadcrumbs -->
-        <q-breadcrumbs active-color="primary" separator-color="grey-4" class="q-mb-md">
+        <q-breadcrumbs active-color="primary" separator-color="grey-4"
+            class="q-mb-sm q-mb-sm-md text-caption text-sm-body2">
             <q-breadcrumbs-el label="Início" icon="home" to="/" />
             <q-breadcrumbs-el label="Estoque" icon="inventory_2" />
         </q-breadcrumbs>
 
         <!-- Cabeçalho -->
-        <div class="row items-center q-mb-lg col-gutter-sm">
-            <q-icon name="inventory_2" color="primary" size="32px" class="q-mr-sm" />
-            <div>
-                <div class="text-h5 text-weight-bold">Estoque</div>
-                <div class="text-caption text-grey-7">Gerencie produtos, saldos e movimentações de entrada e saída</div>
+        <div class="row items-center justify-between no-wrap q-mb-md q-mb-sm-lg q-gutter-xs">
+            <div class="row items-center no-wrap col" style="min-width: 0;">
+                <q-icon name="inventory_2" color="primary" :size="$q.screen.xs ? '26px' : '32px'"
+                    class="q-mr-sm col-auto" />
+                <div class="col" style="min-width: 0;">
+                    <div class="text-h6 text-sm-h5 text-weight-bold ellipsis">Estoque</div>
+                    <div class="text-caption text-grey-7 ellipsis">
+                        Gerencie produtos, saldos e movimentações de entrada e saída
+                    </div>
+                </div>
             </div>
-            <q-space />
-            <q-btn flat round icon="refresh" color="primary" @click="refetch" :loading="isFetching">
+            <q-btn flat round dense icon="refresh" color="primary" class="col-auto" @click="refetch"
+                :loading="isFetching">
                 <q-tooltip>Atualizar dados</q-tooltip>
             </q-btn>
         </div>
 
         <!-- Estado de Erro -->
-        <div v-if="isError" class="flex flex-center q-pa-xl">
+        <div v-if="isError" class="flex flex-center q-pa-lg q-pa-sm-xl">
             <div class="text-center">
                 <q-icon name="error_outline" size="48px" color="negative" class="q-mb-md" />
-                <div class="text-h6 text-weight-bold">Erro ao carregar dados do estoque</div>
-                <div class="text-caption text-grey-7 q-mb-md">Não foi possível obter o resumo do estoque. Tente
-                    novamente.</div>
+                <div class="text-subtitle1 text-sm-h6 text-weight-bold">Erro ao carregar dados do estoque</div>
+                <div class="text-caption text-grey-7 q-mb-md">
+                    Não foi possível obter o resumo do estoque. Tente novamente.
+                </div>
                 <q-btn color="primary" icon="refresh" label="Tentar novamente" no-caps @click="refetch" />
             </div>
         </div>
 
         <div v-else>
             <!-- KPIs -->
-            <div class="row q-col-gutter-sm q-md-gutter-md q-mb-lg">
+            <div class="row q-col-gutter-sm q-col-gutter-md-md q-mb-md q-mb-sm-lg">
                 <div v-for="kpi in mappedKpis" :key="kpi.label" class="col-6 col-md-3">
                     <q-card class="full-height no-shadow" bordered :class="{ 'cursor-pointer': kpi.to }"
                         :style="kpi.style" @click="kpi.to && $router.push(kpi.to)">
-                        <q-card-section class="q-pa-sm q-pa-md-sm">
-                            <div class="row items-center">
-                                <q-icon :name="kpi.icon" :color="kpi.color" size="28px" class="q-mr-sm" />
+                        <q-card-section class="q-pa-sm q-pa-sm-md">
+                            <div class="row items-center no-wrap">
+                                <q-icon :name="kpi.icon" :color="kpi.color" :size="$q.screen.xs ? '22px' : '28px'"
+                                    class="q-mr-xs q-mr-sm-sm col-auto" />
                                 <div class="col" style="min-width: 0;">
-                                    <div class="text-caption text-grey-7 text-truncate">{{ kpi.label }}</div>
-                                    <div class="text-h6 text-weight-bold text-truncate">
+                                    <div class="text-caption text-grey-7 ellipsis">{{ kpi.label }}</div>
+                                    <div class="text-subtitle1 text-sm-h6 text-weight-bold ellipsis">
                                         <q-skeleton v-if="isLoading" type="text" width="60px" />
                                         <template v-else>{{ kpi.value }}</template>
                                     </div>
@@ -54,35 +62,38 @@
             </div>
 
             <!-- Alertas + Atividades -->
-            <div class="row q-col-gutter-md q-mb-lg">
+            <div class="row q-col-gutter-sm q-col-gutter-md-md q-mb-md q-mb-sm-lg">
                 <!-- Alertas -->
-                <div class="col-12 col-md-7">
+                <div class="col-12 col-md-7" style="min-width: 0;">
                     <q-card class="full-height no-shadow" bordered>
-                        <q-card-section>
-                            <div class="row items-center q-mb-sm">
-                                <q-icon name="notification_important" color="warning" size="22px" class="q-mr-sm" />
-                                <div class="text-subtitle1 text-weight-bold">Atenção necessária</div>
+                        <q-card-section class="q-pa-sm q-pa-sm-md">
+                            <div class="row items-center no-wrap q-mb-sm">
+                                <q-icon name="notification_important" color="warning" size="20px"
+                                    class="q-mr-xs q-mr-sm-sm col-auto" />
+                                <div class="text-subtitle2 text-sm-subtitle1 text-weight-bold ellipsis">
+                                    Atenção necessária
+                                </div>
                             </div>
 
                             <q-skeleton v-if="isLoading" type="rect" height="120px" />
 
-                            <div v-else-if="!hasAlertas" class="text-center q-pa-lg">
+                            <div v-else-if="!hasAlertas" class="text-center q-pa-md q-pa-sm-lg">
                                 <q-icon name="check_circle" color="positive" size="36px" class="q-mb-xs" />
                                 <div class="text-subtitle2 text-weight-bold">Tudo em ordem por aqui!</div>
                                 <div class="text-caption text-grey-7">Nenhum produto zerado ou abaixo do mínimo.</div>
                             </div>
 
                             <q-list v-else separator class="rounded-borders">
-                                <q-item v-if="alertas.abaixo_minimo.length" clickable
+                                <q-item v-if="alertas.abaixo_minimo.length" clickable class="q-px-xs q-px-sm-sm"
                                     @click="$router.push('/estoque/produtos?filtro=abaixo_minimo')">
-                                    <q-item-section avatar>
+                                    <q-item-section avatar style="min-width: 36px;">
                                         <q-icon name="warning" color="warning" />
                                     </q-item-section>
-                                    <q-item-section>
-                                        <q-item-label class="text-weight-medium text-warning">
+                                    <q-item-section style="min-width: 0;">
+                                        <q-item-label class="text-body2 text-weight-medium text-warning">
                                             {{ kpis.abaixo_minimo }} produto(s) abaixo do mínimo
                                         </q-item-label>
-                                        <q-item-label class="text-caption text-grey-7">
+                                        <q-item-label caption lines="2">
                                             {{ nomesResumo(alertas.abaixo_minimo) }}
                                         </q-item-label>
                                     </q-item-section>
@@ -91,16 +102,16 @@
                                     </q-item-section>
                                 </q-item>
 
-                                <q-item v-if="alertas.zerados.length" clickable
+                                <q-item v-if="alertas.zerados.length" clickable class="q-px-xs q-px-sm-sm"
                                     @click="$router.push('/estoque/produtos?filtro=zerados')">
-                                    <q-item-section avatar>
+                                    <q-item-section avatar style="min-width: 36px;">
                                         <q-icon name="remove_shopping_cart" color="negative" />
                                     </q-item-section>
-                                    <q-item-section>
-                                        <q-item-label class="text-weight-medium text-negative">
+                                    <q-item-section style="min-width: 0;">
+                                        <q-item-label class="text-body2 text-weight-medium text-negative">
                                             {{ kpis.zerados }} produto(s) com estoque zerado
                                         </q-item-label>
-                                        <q-item-label class="text-caption text-grey-7">
+                                        <q-item-label caption lines="2">
                                             {{ nomesResumo(alertas.zerados) }}
                                         </q-item-label>
                                     </q-item-section>
@@ -109,16 +120,16 @@
                                     </q-item-section>
                                 </q-item>
 
-                                <q-item v-if="alertas.sem_movimentacao.length" clickable
+                                <q-item v-if="alertas.sem_movimentacao.length" clickable class="q-px-xs q-px-sm-sm"
                                     @click="$router.push('/estoque/produtos?filtro=sem_movimentacao')">
-                                    <q-item-section avatar>
+                                    <q-item-section avatar style="min-width: 36px;">
                                         <q-icon name="schedule" color="info" />
                                     </q-item-section>
-                                    <q-item-section>
-                                        <q-item-label class="text-weight-medium">
+                                    <q-item-section style="min-width: 0;">
+                                        <q-item-label class="text-body2 text-weight-medium">
                                             {{ alertas.sem_movimentacao.length }} produto(s) sem movimentação recente
                                         </q-item-label>
-                                        <q-item-label class="text-caption text-grey-7">
+                                        <q-item-label caption lines="2">
                                             {{ nomesResumo(alertas.sem_movimentacao) }}
                                         </q-item-label>
                                     </q-item-section>
@@ -132,36 +143,41 @@
                 </div>
 
                 <!-- Atividades recentes -->
-                <div class="col-12 col-md-5">
+                <div class="col-12 col-md-5" style="min-width: 0;">
                     <q-card class="full-height no-shadow" bordered>
-                        <q-card-section>
-                            <div class="row items-center q-mb-sm">
-                                <q-icon name="history" color="primary" size="22px" class="q-mr-sm" />
-                                <div class="text-subtitle1 text-weight-bold">Atividades recentes</div>
-                                <q-space />
-                                <q-btn flat dense size="sm" color="primary" label="Ver todas" no-caps
+                        <q-card-section class="q-pa-sm q-pa-sm-md">
+                            <div class="row items-center justify-between no-wrap q-mb-sm q-gutter-xs">
+                                <div class="row items-center no-wrap" style="min-width: 0;">
+                                    <q-icon name="history" color="primary" size="20px"
+                                        class="q-mr-xs q-mr-sm-sm col-auto" />
+                                    <div class="text-subtitle2 text-sm-subtitle1 text-weight-bold ellipsis">
+                                        Atividades recentes
+                                    </div>
+                                </div>
+                                <q-btn flat dense size="sm" color="primary" label="Ver todas" no-caps class="col-auto"
                                     @click="$router.push('/estoque/movimentacoes')" />
                             </div>
 
                             <q-skeleton v-if="isLoading" type="rect" height="160px" />
 
-                            <div v-else-if="!atividades.length" class="text-center q-pa-lg">
+                            <div v-else-if="!atividades.length" class="text-center q-pa-md q-pa-sm-lg">
                                 <q-icon name="inbox" size="36px" color="grey-5" class="q-mb-xs" />
-                                <div class="text-caption text-grey-7">Nenhuma movimentação registrada recentemente.
+                                <div class="text-caption text-grey-7">
+                                    Nenhuma movimentação registrada recentemente.
                                 </div>
                             </div>
 
                             <q-list v-else dense separator class="rounded-borders">
-                                <q-item v-for="mov in atividades" :key="mov.id">
-                                    <q-item-section avatar>
+                                <q-item v-for="mov in atividades" :key="mov.id" class="q-px-xs q-px-sm-sm">
+                                    <q-item-section avatar style="min-width: 32px;">
                                         <q-icon :name="mov.tipo === 'entrada' ? 'arrow_downward' : 'arrow_upward'"
-                                            :color="mov.tipo === 'entrada' ? 'positive' : 'negative'" size="20px" />
+                                            :color="mov.tipo === 'entrada' ? 'positive' : 'negative'" size="18px" />
                                     </q-item-section>
-                                    <q-item-section>
+                                    <q-item-section style="min-width: 0;">
                                         <q-item-label class="text-body2 text-weight-medium ellipsis">
                                             {{ mov.produto }}
                                         </q-item-label>
-                                        <q-item-label class="text-caption text-grey-7 ellipsis">
+                                        <q-item-label caption class="ellipsis">
                                             {{ mov.observacao || mov.tipo_display || (mov.tipo === 'entrada' ? 'Entrada'
                                             : 'Saída')
                                             }}
@@ -185,22 +201,28 @@
             </div>
 
             <!-- Módulos de Acesso Rápido -->
-            <div class="text-subtitle2 text-weight-bold q-mb-sm text-grey-8">Módulos do Estoque</div>
-            <div class="row q-col-gutter-md">
+            <div class="text-subtitle2 text-weight-bold q-mb-sm"
+                :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-8'">
+                Módulos do Estoque
+            </div>
+            <div class="row q-col-gutter-sm q-col-gutter-md-md">
                 <div class="col-12 col-sm-6">
                     <q-card class="cursor-pointer non-selectable full-height no-shadow module-card" bordered
                         tabindex="0" role="link" @click="navigateTo('produtos')"
                         @keydown.enter="navigateTo('produtos')">
-                        <q-card-section class="text-center q-pa-lg">
-                            <q-icon name="category" color="primary" size="56px" class="q-mb-sm" />
-                            <div class="text-h6 text-weight-bold q-mb-xs">Produtos</div>
-                            <div class="text-caption text-grey-7">Cadastrar, editar e acompanhar o catálogo de produtos
+                        <q-card-section class="text-center q-pa-md q-pa-sm-lg">
+                            <q-icon name="category" color="primary" :size="$q.screen.xs ? '44px' : '56px'"
+                                class="q-mb-sm" />
+                            <div class="text-subtitle1 text-sm-h6 text-weight-bold q-mb-xs">Produtos</div>
+                            <div class="text-caption text-grey-7">
+                                Cadastrar, editar e acompanhar o catálogo de produtos
                             </div>
-                            <q-badge v-if="!isLoading" color="primary" outline class="q-mt-md q-px-sm q-py-xs">
+                            <q-badge v-if="!isLoading" color="primary" outline
+                                class="q-mt-sm q-mt-sm-md q-px-sm q-py-xs">
                                 {{ formatNumber(kpis.total_produtos) }} produtos cadastrados
                             </q-badge>
                         </q-card-section>
-                        <q-card-section class="q-pt-none">
+                        <q-card-section class="q-pt-none q-pb-sm q-pb-sm-md">
                             <div class="row items-center justify-center text-primary">
                                 <span class="text-caption text-weight-bold">Acessar Catálogo</span>
                                 <q-icon name="arrow_forward_ios" size="12px" class="q-ml-xs" />
@@ -213,16 +235,19 @@
                     <q-card class="cursor-pointer non-selectable full-height no-shadow module-card" bordered
                         tabindex="0" role="link" @click="navigateTo('movimentacoes')"
                         @keydown.enter="navigateTo('movimentacoes')">
-                        <q-card-section class="text-center q-pa-lg">
-                            <q-icon name="swap_horiz" color="amber-9" size="56px" class="q-mb-sm" />
-                            <div class="text-h6 text-weight-bold q-mb-xs">Movimentações</div>
-                            <div class="text-caption text-grey-7">Registrar entradas, saídas e justificativas de estoque
+                        <q-card-section class="text-center q-pa-md q-pa-sm-lg">
+                            <q-icon name="swap_horiz" color="amber-9" :size="$q.screen.xs ? '44px' : '56px'"
+                                class="q-mb-sm" />
+                            <div class="text-subtitle1 text-sm-h6 text-weight-bold q-mb-xs">Movimentações</div>
+                            <div class="text-caption text-grey-7">
+                                Registrar entradas, saídas e justificativas de estoque
                             </div>
-                            <q-badge v-if="!isLoading" color="amber-9" outline class="q-mt-md q-px-sm q-py-xs">
+                            <q-badge v-if="!isLoading" color="amber-9" outline
+                                class="q-mt-sm q-mt-sm-md q-px-sm q-py-xs">
                                 {{ formatNumber(kpis.movimentacoes) }} registros no período
                             </q-badge>
                         </q-card-section>
-                        <q-card-section class="q-pt-none">
+                        <q-card-section class="q-pt-none q-pb-sm q-pb-sm-md">
                             <div class="row items-center justify-center text-amber-9">
                                 <span class="text-caption text-weight-bold">Ver Histórico</span>
                                 <q-icon name="arrow_forward_ios" size="12px" class="q-ml-xs" />
@@ -237,11 +262,13 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
 import { api } from '@/boot/axios'
 import { animateValue } from '@/utils'
 
+const $q = useQuasar()
 const router = useRouter()
 
 const navigateTo = (modulo) => {
