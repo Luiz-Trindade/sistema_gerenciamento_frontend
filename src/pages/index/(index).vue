@@ -17,8 +17,8 @@
                         </div>
                     </div>
                 </div>
-                <q-btn flat round dense icon="refresh" color="primary" class="col-auto" @click="refetch"
-                    :loading="isFetching">
+                <q-btn flat round dense icon="refresh" color="primary" class="col-auto" @click="refreshAll"
+                    :loading="isFetching || isFetchingBcb">
                     <q-tooltip>Atualizar dados</q-tooltip>
                 </q-btn>
             </div>
@@ -148,7 +148,7 @@
                     </div>
 
                     <!-- Mini Cards de Sequência Histórica do IPCA -->
-                    <div class="row q-col-gutter-xs q-col-gutter-sm-sm">
+                    <div v-if="bcbIpcaList?.length" class="row q-col-gutter-xs q-col-gutter-sm-sm">
                         <div v-for="(item, idx) in bcbIpcaList" :key="idx" class="col-4 col-sm-4 col-md-2">
                             <q-card flat bordered class="text-center q-pa-xs q-pa-sm-sm">
                                 <div class="text-caption text-grey-6 text-weight-medium">{{ item.data }}</div>
@@ -159,6 +159,9 @@
                             </q-card>
                         </div>
                     </div>
+                    <div v-else class="text-caption text-grey-6">
+                        Carregando indicadores oficiais do Banco Central...
+                    </div>
                 </q-card-section>
             </q-card>
         </div>
@@ -168,7 +171,7 @@
             <div class="text-center">
                 <q-icon name="error_outline" size="48px" color="negative" class="q-mb-md" />
                 <div class="text-h6">Erro ao carregar dados</div>
-                <q-btn color="primary" label="Tentar novamente" class="q-mt-md" @click="refetch" />
+                <q-btn color="primary" label="Tentar novamente" class="q-mt-md" @click="refreshAll" />
             </div>
         </div>
     </q-page>
@@ -178,6 +181,7 @@
 import { ref, computed, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useQuery } from '@tanstack/vue-query'
+import { api } from '@/boot/axios'
 import { animateValue } from '@/utils'
 
 import LineChart from '@/components/LineChart.vue'
@@ -210,43 +214,46 @@ const applyFilters = () => {
     activePeriod.value = filterPeriod.value
 }
 
-// --- Vue Query: Dados do ERP (Mockados para frontend puro) ---
+// --- Datas (Ajustado para fuso horário local evitando virada de dia antecipada em UTC) ---
+const getDateRange = (period) => {
+    const end = new Date()
+    const start = new Date()
+
+    switch (period) {
+        case 'today': break
+        case '7days': start.setDate(end.getDate() - 7); break
+        case 'month': start.setDate(1); break
+        case '30days': start.setDate(end.getDate() - 30); break
+        case 'year': start.setMonth(0, 1); break
+    }
+
+    const fmt = (d) => {
+        const year = d.getFullYear()
+        const month = String(d.getMonth() + 1).padStart(2, '0')
+        const day = String(d.getDate()).padStart(2, '0')
+        return `${year}-${month}-${day}`
+    }
+
+    return { start_date: fmt(start), end_date: fmt(end) }
+}
+
+// --- Vue Query: Dados Reais da API do ERP ---
 const { data, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: () => ['dashboard', activePeriod.value],
     queryFn: async () => {
-        await new Promise((resolve) => setTimeout(resolve, 300))
-        return {
-            kpis: {
-                vendas: activePeriod.value === 'year' ? 6333.03 : 1500.00,
-                ticket_medio: 109.19,
-                clientes: 21,
-                pedidos: 69
-            },
-            charts: {
-                evolucao_vendas: {
-                    labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
-                    data: [1200, 1700, 1400, 1000, 1300, 1850, 1500, 1100, 900, 750, 500, 0]
-                },
-                top_produtos: {
-                    labels: ['Amaciante 05 LTS', 'Desengraxante 1L', 'Vaselina Líquida', 'L. Alumínio 05 LTS', 'L. Pneus 500 GR'],
-                    data: [120, 95, 80, 75, 70]
-                },
-                meios_pagamento: {
-                    labels: ['Pix', 'Cartão de Crédito', 'Dinheiro', 'Boleto'],
-                    data: [45, 30, 15, 10]
-                },
-                pedidos_por_status: {
-                    labels: ['Concluído', 'Processando', 'Criado', 'Cancelado'],
-                    data: [50, 12, 5, 2]
-                }
-            }
-        }
+        const dates = getDateRange(activePeriod.value)
+        const response = await api.get('/dashboards/principal/', { params: dates })
+        return response.data
     },
     placeholderData: (previousData) => previousData,
 })
 
-// --- Vue Query: Consumo Direto da API do Banco Central (Protegido contra Rate-Limit) ---
-const { data: bcbIpcaList } = useQuery({
+// --- Vue Query: Consumo Direto da API Oficial do Banco Central (IPCA - Série 433) ---
+const {
+    data: bcbIpcaList,
+    isFetching: isFetchingBcb,
+    refetch: refetchBcb
+} = useQuery({
     queryKey: ['bcb-ipca-serie-433'],
     queryFn: async () => {
         const response = await fetch('https://api.bcb.gov.br/dados/serie/bcdata.sgs.433/dados/ultimos/6?formato=json')
@@ -280,6 +287,11 @@ const { data: bcbIpcaList } = useQuery({
     refetchOnWindowFocus: false,
     retry: 2
 })
+
+const refreshAll = () => {
+    refetch()
+    refetchBcb()
+}
 
 // --- Formatação ---
 const formatCurrency = (value) =>
