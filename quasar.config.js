@@ -56,9 +56,9 @@ export default defineConfig((/* ctx */) => {
 
         // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#framework
         framework: {
-            config: {
-                addressbarColor: '#2563eb',
-            },
+            // config: {
+            //     addressbarColor: '#2563eb',
+            // },
 
             // Quasar plugins
             plugins: ['Dark', 'Dialog', 'Notify', 'Loading', 'AddressbarColor'],
@@ -103,8 +103,8 @@ export default defineConfig((/* ctx */) => {
                 json.description = 'Sistema de gestão de estoque e vendas'
                 json.display = 'standalone'
                 json.orientation = 'any'
-                json.background_color = '#2563eb'
                 json.theme_color = '#2563eb'
+                json.background_color = '#2563eb'
                 json.lang = 'pt-BR'
                 json.dir = 'ltr'
 
